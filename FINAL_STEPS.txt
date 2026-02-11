@@ -1,0 +1,48 @@
+================================================================================
+  🎯 FINAL STEPS - Get Your App Running!
+================================================================================
+
+I've fixed everything! Now just run these 3 commands:
+
+================================================================================
+  COMMAND 1: Update Database Schema
+================================================================================
+
+  npm run db:migrate
+
+This adds the new fields (path, sponsorCode, lastActive) to your database.
+
+If it fails:
+  → Check DATABASE_URL in .env file
+  → Get free database from https://neon.tech if needed
+
+================================================================================
+  COMMAND 2: Add Sample Data
+================================================================================
+
+  npm run db:seed
+
+This creates:
+  ✅ Admin: admin@realtycollective.com / admin123
+  ✅ Director: director@realtycollective.com / director123 (sponsor code: DEMO1234)
+  ✅ VP: vp@realtycollective.com / vp123
+  ✅ 2 Projects
+  ✅ Training content
+  ✅ Challenges
+  ✅ Notifications
+
+================================================================================
+  COMMAND 3: Start Server
+================================================================================
+
+  npm run dev
+
+Look for: "Ready on http://localhost:3000"
+
+Then open: http://localhost:3000
+
+================================================================================
+  ✅ THAT'S IT!
+================================================================================
+
+If you see any errors, share them and I'll fix them immediately!

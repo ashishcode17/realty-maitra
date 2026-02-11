@@ -1,0 +1,87 @@
+================================================================================
+  📋 MIGRATION STEPS - File Upload System
+================================================================================
+
+I've implemented the complete file upload & download system!
+
+================================================================================
+  🎯 STEP 1: Run Database Migration
+================================================================================
+
+Run this command to update your database schema:
+
+npm run db:migrate
+
+(If it asks for a migration name, type: "add_file_storage")
+
+================================================================================
+  🎯 STEP 2: Restart Your App
+================================================================================
+
+1. Stop your app (Ctrl+C)
+2. Run: npm run dev
+3. Wait for "Ready on http://localhost:3000"
+
+================================================================================
+  🎯 STEP 3: Test Admin Upload
+================================================================================
+
+1. Login as admin: admin@realtycollective.com / admin123
+2. Go to: http://localhost:3000/admin/training
+3. Click "Upload Content"
+4. Fill the form and upload a PDF file
+5. Should see success message!
+
+================================================================================
+  🎯 STEP 4: Test User Download
+================================================================================
+
+1. Go to: http://localhost:3000/training
+2. You should see the uploaded content
+3. Click "Download" button
+4. File should download!
+
+================================================================================
+  ✅ WHAT WAS IMPLEMENTED:
+================================================================================
+
+1. ✅ Updated Prisma schema (TrainingContent, ProjectDocument)
+2. ✅ Created file service layer
+3. ✅ Admin upload API (/api/admin/training/upload)
+4. ✅ Secure download API (/api/files/download)
+5. ✅ Admin UI for uploads (/admin/training)
+6. ✅ Training Center UI with downloads (/training)
+7. ✅ Security middleware (blocks direct /uploads access)
+8. ✅ Upload directories created
+
+================================================================================
+  📁 FILE STRUCTURE:
+================================================================================
+
+uploads/
+  training/     # Training documents (PDF, PPT, DOC, etc.)
+  projects/     # Project documents
+  offers/       # Offer-related files
+
+Files are stored with UUID filenames for security.
+
+================================================================================
+  🔒 SECURITY:
+================================================================================
+
+- Direct /uploads access is blocked
+- All downloads require authentication
+- Only admins can upload
+- File type and size validation
+- Path traversal protection
+
+================================================================================
+  📝 NOTES:
+================================================================================
+
+- Maximum file size: 25MB
+- Allowed types: PDF, PPT, PPTX, DOC, DOCX, XLS, XLSX, JPG, PNG
+- Files are stored locally (can switch to S3/Cloudinary later)
+- Video content uses embed URLs (YouTube/Vimeo)
+
+================================================================================

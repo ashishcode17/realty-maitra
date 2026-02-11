@@ -1,0 +1,48 @@
+================================================================================
+  🔧 FIXING "Can't resolve '@prisma/client'"
+================================================================================
+
+This error means @prisma/client package is missing or broken.
+
+================================================================================
+  🎯 QUICK FIX:
+================================================================================
+
+Double-click: FIX_MISSING_MODULE.bat
+
+This will:
+1. Install @prisma/client
+2. Regenerate Prisma client
+3. Clear Next.js cache
+4. Ready to restart!
+
+================================================================================
+  📋 MANUAL STEPS:
+================================================================================
+
+STEP 1: Install Package
+  → Run: npm install @prisma/client
+
+STEP 2: Generate Client
+  → Run: npm run db:generate
+
+STEP 3: Clear Cache
+  → Delete .next folder
+  → OR run: rmdir /s /q .next
+
+STEP 4: Restart App
+  → Run: npm run dev
+  → Try login!
+
+================================================================================
+  ✅ AFTER FIX:
+================================================================================
+
+The error should be gone!
+
+Then:
+1. Go to: http://localhost:3000
+2. Login: admin@realtycollective.com / admin123
+3. Should work! 🎉
+
+================================================================================

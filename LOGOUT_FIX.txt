@@ -1,0 +1,44 @@
+================================================================================
+  ✅ FIXED: Auto-Logout Issue
+================================================================================
+
+The problem was that DashboardLayout wasn't sending the token when checking auth.
+
+================================================================================
+  ✅ WHAT I FIXED:
+================================================================================
+
+1. ✅ DashboardLayout now sends token in Authorization header
+2. ✅ Dashboard page now sends token in requests
+3. ✅ Logout properly clears token from localStorage
+
+================================================================================
+  🎯 RESTART YOUR APP:
+================================================================================
+
+STEP 1: Stop App
+  → Press Ctrl+C in PowerShell
+
+STEP 2: Restart
+  → Run: npm run dev
+
+STEP 3: Login Again
+  → Go to: http://localhost:3000/login
+  → Email: admin@realtycollective.com
+  → Password: admin123
+  → Click Sign In
+
+STEP 4: Should Stay Logged In!
+  → You should now stay on the dashboard
+  → No more auto-logout!
+
+================================================================================
+  ✅ WHAT WAS WRONG:
+================================================================================
+
+The DashboardLayout was calling /api/auth/me without sending the token.
+The API requires the token in the Authorization header.
+
+Now it sends: Authorization: Bearer <token>
+
+================================================================================

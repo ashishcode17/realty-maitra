@@ -1,0 +1,53 @@
+================================================================================
+  🔧 QUICK FIX FOR DATABASE CONNECTION ERROR
+================================================================================
+
+You're getting "Database connection failed" - here's the quick fix:
+
+================================================================================
+  ✅ FIX APPLIED:
+================================================================================
+
+I've updated the code to load .env file properly in Next.js.
+
+================================================================================
+  🎯 WHAT TO DO NOW (2 STEPS):
+================================================================================
+
+STEP 1: Restart Your App
+  → Stop the app (press Ctrl+C in the window running npm run dev)
+  → Double-click: RESTART_APP.bat
+  → OR run: npm run dev
+  → Wait for "Ready on http://localhost:3000"
+
+STEP 2: Test Again
+  → Go to: http://localhost:3000
+  → Try login: admin@realtycollective.com / admin123
+
+================================================================================
+  ❓ IF STILL NOT WORKING:
+================================================================================
+
+Test the connection:
+  → Double-click: TEST_CONNECTION.bat
+  → Should say "Database connection successful"
+
+If test fails:
+  → Your DATABASE_URL might be wrong
+  → Get a new connection string from neon.tech
+  → Update .env file
+  → Restart app
+
+================================================================================
+  📋 CHECKLIST:
+================================================================================
+
+□ .env file exists in project folder
+□ DATABASE_URL line is in .env file
+□ Connection string starts with "postgresql://"
+□ App was restarted after .env was updated
+□ App shows "Ready on http://localhost:3000"
+
+If all checked, it should work!
+
+================================================================================

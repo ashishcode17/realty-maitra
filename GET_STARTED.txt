@@ -1,0 +1,56 @@
+================================================================================
+  🚀 HOW TO RUN REALTY COLLECTIVE - STEP BY STEP
+================================================================================
+
+STEP 1: SETUP DATABASE
+----------------------
+Choose ONE option:
+
+OPTION A - Free Cloud Database (EASIEST):
+  1. Go to https://neon.tech (free account)
+  2. Create project → Copy connection string
+  3. Paste in .env file as DATABASE_URL
+
+OPTION B - Local PostgreSQL:
+  1. Install PostgreSQL from postgresql.org
+  2. Create database: CREATE DATABASE realty_collective;
+  3. Update .env with: postgresql://postgres:YOUR_PASSWORD@localhost:5432/realty_collective
+
+
+STEP 2: CONFIGURE .env FILE
+-----------------------------
+Open .env file and make sure it has:
+
+DATABASE_URL="your-database-connection-string"
+JWT_SECRET="any-secret-key-12345"
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+
+
+STEP 3: RUN SETUP COMMANDS
+---------------------------
+Open PowerShell in realty-collective folder and run:
+
+  npm run db:generate
+  npm run db:migrate
+  npm run db:seed
+  npm run dev
+
+
+STEP 4: OPEN BROWSER
+--------------------
+Go to: http://localhost:3000
+
+
+STEP 5: LOGIN
+-------------
+Use these credentials (created by seed):
+
+  Email: admin@realtycollective.com
+  Password: admin123
+
+
+================================================================================
+  ✅ THAT'S IT! You should see the dashboard!
+================================================================================
+
+For detailed instructions, see: START_HERE.md or README.md

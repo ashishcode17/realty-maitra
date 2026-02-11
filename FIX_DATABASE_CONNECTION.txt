@@ -1,0 +1,90 @@
+================================================================================
+  🔧 FIXING DATABASE CONNECTION ERROR
+================================================================================
+
+You're getting "Database connection failed" - let's fix it!
+
+================================================================================
+  CHECK 1: Is DATABASE_URL in .env File?
+================================================================================
+
+1. Go to: C:\Users\Ashish\Desktop\realty-collective
+2. Open file: .env
+3. Look for line: DATABASE_URL="..."
+4. Is it there? Is it complete?
+
+If NO or incomplete:
+  → Get connection string from neon.tech
+  → Update .env file
+  → Save
+
+================================================================================
+  CHECK 2: Test Connection
+================================================================================
+
+Run this in PowerShell (in project folder):
+
+npm run db:migrate
+
+If it says "Already in sync" → Database is connected! ✅
+If it says "Can't reach database" → Connection string is wrong
+
+================================================================================
+  CHECK 3: Restart the App
+================================================================================
+
+After fixing .env file:
+
+1. Stop the app (press Ctrl+C in the window running npm run dev)
+2. Start it again: npm run dev
+3. Try login again
+
+================================================================================
+  COMMON FIXES:
+================================================================================
+
+Problem: DATABASE_URL is missing
+Fix: Add it to .env file
+
+Problem: DATABASE_URL is wrong
+Fix: Get new connection string from neon.tech
+
+Problem: Connection string has extra spaces
+Fix: Remove spaces, make sure it's on one line
+
+Problem: App was started before .env was updated
+Fix: Restart the app (stop and start again)
+
+================================================================================
+  🎯 QUICK FIX STEPS:
+================================================================================
+
+STEP 1: Check .env File
+  → Open: C:\Users\Ashish\Desktop\realty-collective\.env
+  → Make sure DATABASE_URL line exists
+  → Should look like: DATABASE_URL="postgresql://..."
+
+STEP 2: Test Connection
+  → Run: npm run db:migrate
+  → Should say "Already in sync"
+
+STEP 3: Restart App
+  → Stop app (Ctrl+C)
+  → Start again: npm run dev
+  → Try login
+
+================================================================================
+  📋 WHAT TO CHECK:
+================================================================================
+
+In your .env file, you should have:
+
+DATABASE_URL="postgresql://neondb_owner:password@host:port/database?sslmode=require"
+
+Make sure:
+□ It starts with "postgresql://"
+□ It's all on one line (no line breaks)
+□ It's in quotes
+□ No extra spaces
+
+================================================================================

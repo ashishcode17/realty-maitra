@@ -1,0 +1,129 @@
+================================================================================
+  🔧 TROUBLESHOOTING LOGIN ISSUES
+================================================================================
+
+You created the admin user in Prisma Studio, but login still doesn't work?
+
+Let's check what might be wrong:
+
+================================================================================
+  CHECK 1: Did You Save the User?
+================================================================================
+
+Go back to Prisma Studio:
+1. Run: npm run db:studio
+2. Go to: http://localhost:5555
+3. Click "User" table
+4. Do you see: admin@realtycollective.com?
+
+If NO:
+  → You didn't save it properly
+  → Create it again (see HOW_TO_CREATE_ADMIN.txt)
+
+If YES:
+  → Continue to Check 2
+
+================================================================================
+  CHECK 2: Is the Password Hash Correct?
+================================================================================
+
+In Prisma Studio, click on the admin user and check:
+
+passwordHash field should be EXACTLY:
+$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcFl7p92ldGxad68LJZdL17lhWy
+
+If it's different:
+  → The password won't work
+  → Update it to the value above
+  → Save again
+
+================================================================================
+  CHECK 3: Is Status Set to ACTIVE?
+================================================================================
+
+In Prisma Studio, check the admin user:
+
+status field should be: ACTIVE
+
+If it's PENDING_VERIFICATION or something else:
+  → Login will fail
+  → Change it to ACTIVE
+  → Save
+
+================================================================================
+  CHECK 4: Is emailVerified Set to True?
+================================================================================
+
+In Prisma Studio, check:
+
+emailVerified should be checked (true)
+
+If it's unchecked:
+  → Check the box
+  → Save
+
+================================================================================
+  CHECK 5: Is the App Running?
+================================================================================
+
+1. Open PowerShell in project folder
+2. Run: npm run dev
+3. Wait for: "Ready on http://localhost:3000"
+4. Keep that window open!
+5. Go to: http://localhost:3000
+6. Try login
+
+================================================================================
+  CHECK 6: What Error Do You See?
+================================================================================
+
+When you try to login, what happens?
+
+Error: "Invalid email or password"
+  → Password hash is wrong (see Check 2)
+  → Or user doesn't exist (see Check 1)
+
+Error: "Account is not active"
+  → Status is not ACTIVE (see Check 3)
+
+Error: "Database connection failed"
+  → App can't connect to database
+  → Check your DATABASE_URL in .env file
+
+Error: "Site can't be reached"
+  → App is not running
+  → Run: npm run dev (see Check 5)
+
+================================================================================
+  🎯 QUICK FIX CHECKLIST:
+================================================================================
+
+□ User exists in Prisma Studio (admin@realtycollective.com)
+□ passwordHash is correct (see Check 2)
+□ status is ACTIVE
+□ emailVerified is true (checked)
+□ App is running (npm run dev)
+□ Going to http://localhost:3000
+□ Using correct email: admin@realtycollective.com
+□ Using correct password: admin123
+
+If ALL are checked, login should work!
+
+================================================================================
+  📋 STEP-BY-STEP TEST:
+================================================================================
+
+1. Open Prisma Studio: npm run db:studio
+2. Check User table - see admin user?
+3. Click on admin user
+4. Verify all fields (see checks above)
+5. Close Prisma Studio
+6. Start app: npm run dev
+7. Go to: http://localhost:3000
+8. Click Login
+9. Enter: admin@realtycollective.com / admin123
+10. Click Sign In
+
+What happens? Share the exact error message!
+
+================================================================================

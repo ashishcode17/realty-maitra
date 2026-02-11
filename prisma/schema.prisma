@@ -1,0 +1,525 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  DIRECTOR
+  VP
+  AVP
+  SSM
+  SM
+  BDM
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  FROZEN       // Can login/view; cannot invite, enroll in challenges, or be assigned leads
+  INACTIVE
+  SUSPENDED
+  PENDING_VERIFICATION
+}
+
+enum ProjectStatus {
+  ACTIVE
+  UPCOMING
+  CLOSED
+}
+
+enum ProjectType {
+  PLOTS
+  VILLAS
+  COMMERCIAL
+  APARTMENTS
+  MIXED
+}
+
+enum EarningsStatus {
+  PENDING
+  APPROVED
+  PAID
+  REJECTED
+}
+
+enum TrainingContentType {
+  PDF
+  VIDEO
+  DOCUMENT
+  PPT
+  DOCX
+  XLS
+  IMAGE
+}
+
+enum TrainingContentCategory {
+  ONBOARDING
+  SALES
+  PROJECTS
+  COMPLIANCE
+  SCRIPTS
+  TOOLS
+}
+
+enum SessionMode {
+  ONLINE
+  OFFLINE
+}
+
+enum BookingStatus {
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+enum ChallengeStatus {
+  ACTIVE
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum NotificationType {
+  INFO
+  WARNING
+  SUCCESS
+  URGENT
+}
+
+enum NotificationPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  SITE_VISIT
+  FOLLOW_UP
+  CONVERTED
+  LOST
+}
+
+model User {
+  id                String      @id @default(cuid())
+  name              String
+  email             String      @unique
+  phone             String?
+  city              String?
+  passwordHash      String
+  role              UserRole    @default(BDM)
+  roleRank          Int         @default(6) // 1=DIRECTOR, 2=VP, 3=AVP, 4=SSM, 5=SM, 6=BDM, 0=ADMIN
+  status            UserStatus  @default(PENDING_VERIFICATION)
+  emailVerified     Boolean     @default(false)
+  emailVerifiedAt   DateTime?
+  phoneVerified     Boolean     @default(false)
+  phoneVerifiedAt   DateTime?
+  sponsorId         String? // parent_id
+  sponsor           User?       @relation("UserTree", fields: [sponsorId], references: [id])
+  downlines         User[]      @relation("UserTree")
+  path              String[]    // Array of ancestor IDs for tree queries
+  sponsorCode       String?     @unique // Unique sponsor code for referrals
+  lastActive        DateTime?   // Last active timestamp
+  isDemo            Boolean     @default(false)
+  roleAssignedBy    String?
+  roleAssignedAt    DateTime?
+  profilePhotoUrl   String?     // URL or path to profile image
+  tokenVersion      Int         @default(0) // Increment to invalidate all JWTs (logout all)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  // Relations
+  userSettings      UserSettings?
+  userSessions      UserSession[]
+  supportTickets    SupportTicket[]
+  earnings          Earnings[]
+  trainingBookings  TrainingBooking[]
+  trainingCompletions TrainingCompletion[]
+  challengeEnrollments ChallengeEnrollment[]
+  assignedLeads     Lead[]
+  auditLogs         AuditLog[]  @relation("Actor")
+  notifications     Notification[]
+  fileDownloadLogs  FileDownloadLog[]
+  createdProjects   Project[]   @relation("ProjectCreator")
+  createdSessions   TrainingSession[]
+  createdChallenges OfferChallenge[]
+  createdContent    TrainingContent[]
+  createdNotifications Notification[] @relation("NotificationCreator")
+
+  @@index([sponsorId])
+  @@index([email])
+  @@index([role])
+  @@index([status])
+}
+
+model Project {
+  id                String      @id @default(cuid())
+  name              String
+  location          String
+  type              ProjectType
+  status            ProjectStatus @default(UPCOMING)
+  description      String?     @db.Text
+  media             String[]    // URLs to images/videos (for now, can be migrated later)
+  documents         String[]    // Legacy URLs - will be migrated to ProjectDocument
+  isDemo            Boolean     @default(false)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  createdById       String?
+  createdBy         User?       @relation("ProjectCreator", fields: [createdById], references: [id])
+
+  // Relations
+  slabConfigs       SlabConfig[]
+  earnings          Earnings[]
+  trainingContent   TrainingContent[]
+  projectDocuments  ProjectDocument[]
+  leads             Lead[]
+
+  @@index([status])
+  @@index([type])
+}
+
+model ProjectDocument {
+  id                String      @id @default(cuid())
+  projectId         String
+  project           Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  filePath          String      // Local file path
+  fileName          String      // Original filename
+  fileType          String      // MIME type
+  fileSize          Int         // File size in bytes
+  uploadedBy        String      // Admin user who uploaded
+  uploadedAt        DateTime    @default(now())
+  isDemo            Boolean     @default(false)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  @@index([projectId])
+}
+
+model SlabConfig {
+  id                String      @id @default(cuid())
+  projectId         String
+  project           Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  directorPct       Float       @default(100.0)
+  vpPct             Float       @default(90.0)
+  avpPct            Float       @default(80.0)
+  ssmPct            Float       @default(70.0)
+  smPct             Float       @default(60.0)
+  bdmPct            Float       @default(40.0)
+  uplineBonus1Pct   Float       @default(5.0) // First upline bonus
+  uplineBonus2Pct   Float       @default(5.0) // Second upline bonus
+  isDemo            Boolean     @default(false)
+  updatedAt         DateTime    @updatedAt
+  updatedBy         String?
+
+  @@unique([projectId])
+  @@index([projectId])
+}
+
+model Earnings {
+  id                String      @id @default(cuid())
+  userId            String
+  user              User        @relation(fields: [userId], references: [id])
+  projectId         String
+  project           Project     @relation(fields: [projectId], references: [id])
+  bookingId         String?     // Deal/Booking reference
+  baseAmount        Float
+  slabPct           Float       // Percentage applied based on user's role
+  calculatedAmount  Float       // baseAmount * (slabPct / 100)
+  uplineBonus1      Float       @default(0) // Bonus to first upline
+  uplineBonus2      Float       @default(0) // Bonus to second upline
+  totalAmount       Float       // calculatedAmount + uplineBonus1 + uplineBonus2
+  status            EarningsStatus @default(PENDING)
+  notes             String?     @db.Text
+  isVerified        Boolean     @default(false)
+  isDemo            Boolean     @default(false)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  approvedBy        String?
+  paidAt            DateTime?
+
+  @@index([userId])
+  @@index([projectId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model TrainingContent {
+  id                String      @id @default(cuid())
+  title             String
+  category          TrainingContentCategory
+  type              TrainingContentType
+  filePath          String?     // Local file path (for PDF/DOCUMENT/PPT/DOCX/XLS/IMAGE)
+  fileName          String?     // Original filename for display
+  fileType          String?     // MIME type
+  fileSize          Int?        // File size in bytes
+  videoEmbedUrl     String?     // ONLY for VIDEO type (YouTube/Vimeo embed)
+  description       String?     @db.Text
+  projectId         String?
+  project           Project?    @relation(fields: [projectId], references: [id])
+  roleVisibility    UserRole[]  // Which roles can see this (empty = all)
+  isActive          Boolean     @default(true)
+  uploadedBy        String?     // Admin user who uploaded
+  uploadedAt        DateTime?
+  isDemo            Boolean     @default(false)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  createdById       String?
+  createdBy         User?       @relation(fields: [createdById], references: [id])
+  completions       TrainingCompletion[]
+
+  @@index([category])
+  @@index([type])
+  @@index([projectId])
+  @@index([isActive])
+}
+
+model TrainingCompletion {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contentId   String
+  content     TrainingContent @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  completedAt DateTime @default(now())
+  isDemo      Boolean  @default(false)
+
+  @@unique([userId, contentId])
+  @@index([userId])
+  @@index([contentId])
+}
+
+model TrainingSession {
+  id                String      @id @default(cuid())
+  title             String
+  mode              SessionMode
+  location          String?     // For offline
+  meetingLink       String?     // For online
+  description       String?     @db.Text
+  startDate         DateTime
+  endDate           DateTime?
+  slotCapacity      Int         @default(50) // Legacy (use TrainingSlot.capacity for per-slot)
+  isActive          Boolean     @default(true)
+  isDemo            Boolean     @default(false)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  createdById       String
+  createdBy         User        @relation(fields: [createdById], references: [id])
+
+  // Relations
+  slots             TrainingSlot[]
+  bookings          TrainingBooking[]
+
+  @@index([startDate])
+  @@index([isActive])
+}
+
+model TrainingSlot {
+  id          String   @id @default(cuid())
+  sessionId   String
+  session     TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  title       String?  // e.g., "Slot 1"
+  startTime   DateTime
+  endTime     DateTime
+  capacity    Int      @default(20)
+  isDemo      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  bookings    TrainingBooking[]
+
+  @@index([sessionId])
+  @@index([startTime])
+}
+
+model TrainingBooking {
+  id                String      @id @default(cuid())
+  sessionId         String
+  session           TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  slotId            String
+  slot              TrainingSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User        @relation(fields: [userId], references: [id])
+  status            BookingStatus @default(CONFIRMED)
+  isDemo            Boolean     @default(false)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  @@unique([slotId, userId])
+  @@index([slotId])
+  @@index([userId])
+  @@index([sessionId])
+  @@index([status])
+}
+
+model OfferChallenge {
+  id                String      @id @default(cuid())
+  title             String
+  reward            String      // Description of reward
+  requirementsJson  String      @db.Text // JSON: {bookings: 5, meetings: 10, training: 3}
+  bannerFilePath    String?
+  bannerFileName    String?
+  bannerFileType    String?
+  bannerFileSize    Int?
+  startDate         DateTime
+  endDate           DateTime
+  isActive          Boolean     @default(true)
+  visibility        String      @default("ALL") // ALL, ROLE_BASED, etc.
+  isDemo            Boolean     @default(false)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  createdById       String
+  createdBy         User        @relation(fields: [createdById], references: [id])
+
+  // Relations
+  enrollments       ChallengeEnrollment[]
+
+  @@index([isActive])
+  @@index([startDate])
+  @@index([endDate])
+}
+
+model ChallengeEnrollment {
+  id                String      @id @default(cuid())
+  challengeId       String
+  challenge         OfferChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User        @relation(fields: [userId], references: [id])
+  status            ChallengeStatus @default(ACTIVE)
+  progressJson      String      @db.Text // JSON: {bookings: 2, meetings: 5, training: 1}
+  enrolledAt        DateTime    @default(now())
+  completedAt       DateTime?
+  approvedBy        String?
+  notes             String?     @db.Text
+  proofFilePath     String?
+  proofNote         String?     @db.Text
+  proofSubmittedAt  DateTime?
+  isVerified        Boolean     @default(false)
+  isDemo            Boolean     @default(false)
+
+  @@unique([challengeId, userId])
+  @@index([userId])
+  @@index([challengeId])
+  @@index([status])
+}
+
+model Notification {
+  id                String      @id @default(cuid())
+  title             String
+  body              String      @db.Text
+  type              NotificationType @default(INFO)
+  priority          NotificationPriority @default(MEDIUM)
+  link              String?     // Optional link to related page
+  isActive          Boolean     @default(true)
+  isGlobal          Boolean     @default(false) // Show in hot notice bar
+  targetUserId      String?     // If null, show to all users
+  targetUser        User?       @relation(fields: [targetUserId], references: [id])
+  isDemo            Boolean     @default(false)
+  createdAt         DateTime    @default(now())
+  expiresAt         DateTime?
+  createdById       String?
+  createdBy         User?       @relation("NotificationCreator", fields: [createdById], references: [id])
+  @@index([isActive])
+  @@index([isGlobal])
+  @@index([targetUserId])
+  @@index([createdAt])
+}
+
+model FileDownloadLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fileId    String   // TrainingContent.id, ProjectDocument.id, etc.
+  fileKind  String   // TRAINING_CONTENT | PROJECT_DOCUMENT | OFFER_BANNER
+  createdAt DateTime @default(now())
+  isDemo    Boolean  @default(false)
+
+  @@index([userId])
+  @@index([fileId])
+  @@index([createdAt])
+}
+
+model Lead {
+  id                String      @id @default(cuid())
+  name              String
+  phone             String
+  email             String?
+  city              String?
+  projectInterestId String?
+  project           Project?    @relation(fields: [projectInterestId], references: [id])
+  source            String?     // Where lead came from
+  status            LeadStatus   @default(NEW)
+  notes             String?     @db.Text
+  nextFollowUpAt    DateTime?
+  assignedToUserId  String?
+  assignedTo        User?       @relation(fields: [assignedToUserId], references: [id])
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  @@index([assignedToUserId])
+  @@index([status])
+  @@index([projectInterestId])
+}
+
+model AuditLog {
+  id                String      @id @default(cuid())
+  actorUserId       String
+  actor             User        @relation("Actor", fields: [actorUserId], references: [id])
+  action            String      // e.g., "CREATE_EARNINGS", "UPDATE_ROLE", "DELETE_PROJECT"
+  entityType        String      // e.g., "Earnings", "User", "Project"
+  entityId          String?
+  metaJson          String?     @db.Text // JSON with before/after, reason, etc.
+  ip                String?     // Client IP if available
+  createdAt         DateTime    @default(now())
+
+  @@index([actorUserId])
+  @@index([entityType])
+  @@index([createdAt])
+}
+
+model UserSettings {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notificationPrefs  String   @default("{}") // JSON: productUpdates, trainingReminders, challengeUpdates, earningsUpdates; inApp + email
+  privacyPrefs        String   @default("{}") // JSON: phoneVisibility, emailVisibility, cityVisibility (ADMIN_ONLY, UPLINE_ONLY, NOBODY, SUBTREE, DIRECT_ONLY)
+  appPrefs           String   @default("{}") // JSON: theme, language, compactMode
+  updatedAt          DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model UserSession {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceInfo  String?  // e.g. "Chrome on Windows"
+  lastActive  DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+}
+
+model SupportTicket {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category       String   // e.g. "bug", "feature", "other"
+  message        String   @db.Text
+  screenshotPath String?
+  status         String   @default("OPEN") // OPEN, IN_PROGRESS, RESOLVED
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}

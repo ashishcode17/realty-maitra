@@ -1,0 +1,58 @@
+================================================================================
+  🎯 START HERE - Super Simple Guide!
+================================================================================
+
+PROBLEM: "Can't reach" error = Database not connected
+
+SOLUTION: Get a free database (takes 2 minutes)
+
+================================================================================
+  STEP-BY-STEP (Super Easy!)
+================================================================================
+
+STEP 1: Get Free Database
+--------------------------
+1. Open browser
+2. Go to: https://neon.tech
+3. Click "Sign Up" (FREE, no credit card)
+4. Click "Create Project"
+5. Name: realty-collective
+6. Click "Create"
+7. You'll see a connection string - COPY THE WHOLE THING!
+
+STEP 2: Update .env File
+-------------------------
+1. Go to: C:\Users\Ashish\Desktop\realty-collective
+2. Open file: .env (with Notepad)
+3. Find this line: DATABASE_URL=
+4. After the = sign, paste your connection string
+5. Save the file
+
+STEP 3: Run Setup
+-----------------
+1. Right-click in the realty-collective folder
+2. Click "Open in Terminal" or "Open PowerShell here"
+3. Copy and paste this command, press Enter:
+   .\setup.ps1
+
+   OR if that doesn't work, run these one by one:
+   
+   npm run db:generate
+   npm run db:migrate
+   npm run db:seed
+   npm run dev
+
+STEP 4: Open Browser
+--------------------
+Go to: http://localhost:3000
+
+STEP 5: Login
+------------
+Email: admin@realtycollective.com
+Password: admin123
+
+================================================================================
+  ✅ THAT'S IT!
+================================================================================
+
+If you get stuck, just tell me what error you see!

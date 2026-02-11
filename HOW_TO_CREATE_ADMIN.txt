@@ -1,0 +1,174 @@
+================================================================================
+  📖 HOW TO CREATE ADMIN USER - SUPER SIMPLE GUIDE
+================================================================================
+
+I'll explain this like you're 5 years old - step by step!
+
+================================================================================
+  STEP 1: Open PowerShell/Terminal
+================================================================================
+
+1. Go to your project folder on Desktop:
+   C:\Users\Ashish\Desktop\realty-collective
+
+2. Right-click in that folder
+3. Click "Open in Terminal" or "Open PowerShell window here"
+
+OR
+
+1. Press Windows key
+2. Type "PowerShell"
+3. Click on "Windows PowerShell"
+4. Type: cd C:\Users\Ashish\Desktop\realty-collective
+5. Press Enter
+
+================================================================================
+  STEP 2: Run the Command
+================================================================================
+
+In the black window (PowerShell), type this EXACTLY:
+
+npm run db:studio
+
+Then press Enter.
+
+Wait 10-20 seconds...
+
+You should see something like:
+"Prisma Studio is up on http://localhost:5555"
+
+================================================================================
+  STEP 3: Open the Website
+================================================================================
+
+1. Open your web browser (Chrome, Edge, etc.)
+2. In the address bar, type EXACTLY:
+   http://localhost:5555
+3. Press Enter
+
+You should see a page that says "Prisma Studio" with a list of tables.
+
+================================================================================
+  STEP 4: Find the User Table
+================================================================================
+
+On the Prisma Studio page, you'll see a list like:
+
+- User
+- Project
+- Earnings
+- etc.
+
+Click on "User" (the first one)
+
+================================================================================
+  STEP 5: Add a New User
+================================================================================
+
+1. You'll see a button that says "Add record" or "+"
+2. Click it
+3. A form will appear with many fields
+
+Fill in ONLY these fields (leave others empty or default):
+
+Field: name
+Value: Super Admin
+
+Field: email  
+Value: admin@realtycollective.com
+
+Field: passwordHash
+Value: $2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy
+(Copy this EXACTLY - it's the password "admin123" encrypted)
+
+Field: role
+Value: SUPER_ADMIN
+(You might need to select from a dropdown)
+
+Field: roleRank
+Value: 100
+
+Field: status
+Value: ACTIVE
+(Select from dropdown)
+
+Field: emailVerified
+Value: Check the box (make it true)
+
+Field: sponsorCode
+Value: ADMIN001
+
+Field: path
+Value: []
+(Type exactly: []  - that's an empty array)
+
+4. Click "Save" or "Create" button
+
+================================================================================
+  STEP 6: Done!
+================================================================================
+
+✅ Admin user created!
+
+Now you can:
+1. Close Prisma Studio (close the browser tab)
+2. Go back to PowerShell and press Ctrl+C to stop it
+3. Start your app: npm run dev
+4. Login with:
+   Email: admin@realtycollective.com
+   Password: admin123
+
+================================================================================
+  ❓ IF SOMETHING GOES WRONG:
+================================================================================
+
+Problem: "npm is not recognized"
+  → You need to install Node.js first
+  → Go to: https://nodejs.org
+  → Download and install
+  → Restart computer
+  → Try again
+
+Problem: "Cannot find module"
+  → Run: npm install
+  → Then try: npm run db:studio again
+
+Problem: Page doesn't open
+  → Make sure you typed: http://localhost:5555
+  → Make sure Prisma Studio is running (check PowerShell window)
+
+Problem: Can't find "Add record" button
+  → Look for a "+" button or "Create" button
+  → It's usually at the top right of the table view
+
+================================================================================
+  📸 VISUAL GUIDE:
+================================================================================
+
+PowerShell window:
+  C:\Users\Ashish\Desktop\realty-collective> npm run db:studio
+  [wait 10 seconds]
+  Prisma Studio is up on http://localhost:5555
+
+Browser:
+  http://localhost:5555
+  → Shows list of tables
+  → Click "User"
+  → Click "Add record" or "+"
+  → Fill form
+  → Click "Save"
+
+================================================================================
+  🎯 QUICK SUMMARY:
+================================================================================
+
+1. Open PowerShell in project folder
+2. Type: npm run db:studio
+3. Wait, then open: http://localhost:5555
+4. Click "User" table
+5. Click "Add record"
+6. Fill the form (see Step 5 above)
+7. Click "Save"
+8. Done! ✅
+
+================================================================================

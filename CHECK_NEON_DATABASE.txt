@@ -1,0 +1,68 @@
+================================================================================
+  FIX: "Can't reach database server" (P1001)
+================================================================================
+
+Your app uses Neon.tech for the database. The error means your PC cannot
+connect to Neon's server. Do these steps IN ORDER.
+
+--------------------------------------------------------------------------------
+STEP 1: Resume the database (Neon pauses free databases)
+--------------------------------------------------------------------------------
+1. Open in browser: https://console.neon.tech
+2. Log in.
+3. Click your project (the one with database "neondb").
+4. If you see "Paused" or "Restore" → click it and wait until it says "Active".
+5. If it already says "Active", go to STEP 2.
+
+--------------------------------------------------------------------------------
+STEP 2: Get a fresh connection string
+--------------------------------------------------------------------------------
+1. In the same project, go to "Connection details" or "Dashboard".
+2. Copy the "Connection string" (the full line starting with postgresql://).
+3. Make sure it ends with: ?sslmode=require
+   If it does NOT end with ?sslmode=require, add it yourself:
+   Example: .../neondb?sslmode=require
+
+--------------------------------------------------------------------------------
+STEP 3: Update your .env file
+--------------------------------------------------------------------------------
+1. Open the file: realty-collective\.env (in Notepad or VS Code).
+2. Find the line: DATABASE_URL="..."
+3. Replace the whole value with your NEW connection string from STEP 2.
+   It must look like:
+   DATABASE_URL="postgresql://USER:PASSWORD@ep-xxxxx-pooler.region.aws.neon.tech/neondb?sslmode=require"
+4. Save the file (Ctrl+S).
+
+--------------------------------------------------------------------------------
+STEP 4: Run migration again
+--------------------------------------------------------------------------------
+In PowerShell:
+  cd "C:\Users\Ashish\Desktop\realty-collective"
+  npm run db:migrate
+
+When it asks for migration name, type: add_demo_mode
+
+--------------------------------------------------------------------------------
+STEP 5: Test connection (see exact error)
+--------------------------------------------------------------------------------
+  npm run test:db
+
+This prints the exact error. If it still says "can't reach", try STEP 6.
+
+--------------------------------------------------------------------------------
+STILL NOT WORKING? Try DIRECT connection (not Pooler)
+--------------------------------------------------------------------------------
+1. In Neon.tech dashboard, find "Connection details".
+2. Switch from "Pooled connection" to "Direct connection" (or "Session mode").
+3. Copy that connection string (it may have a different host, e.g. no "-pooler").
+4. Put it in .env as DATABASE_URL (must end with ?sslmode=require).
+5. Run: npm run test:db
+6. Then: npm run db:migrate
+
+Other checks:
+- Internet: open google.com. If it doesn't load, fix Wi‑Fi first.
+- Turn OFF VPN, then try again.
+- Password with special characters (@ # % &)? Encode them in the URL or change password in Neon.
+- Create a NEW project on Neon.tech and use its new connection string in .env.
+
+================================================================================

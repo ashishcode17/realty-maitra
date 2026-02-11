@@ -1,0 +1,62 @@
+================================================================================
+  📦 HOW TO GET A FREE DATABASE (SUPER SIMPLE)
+================================================================================
+
+You need a database to store your app's data. Here's how to get one FREE:
+
+================================================================================
+  STEP 1: Go to Neon.tech
+================================================================================
+
+1. Open your web browser
+2. Go to: https://neon.tech
+3. Click "Sign Up" (top right)
+4. Sign up with Google or Email (it's FREE)
+
+================================================================================
+  STEP 2: Create a Database
+================================================================================
+
+1. After signing up, click "Create Project"
+2. Give it a name: "realty-collective" (or any name)
+3. Click "Create Project"
+4. Wait 30 seconds for it to create
+
+================================================================================
+  STEP 3: Copy the Connection String
+================================================================================
+
+1. You'll see a page with "Connection string"
+2. Look for something that says "postgresql://..."
+3. Click the "Copy" button next to it
+4. It will copy something like:
+   postgresql://user:password@ep-xxx.region.aws.neon.tech/dbname?sslmode=require
+
+================================================================================
+  STEP 4: Add to Your .env File
+================================================================================
+
+1. Go to your project folder: C:\Users\Ashish\Desktop\realty-collective
+2. Open the file called ".env" (if it doesn't exist, create it)
+3. Add this line:
+   DATABASE_URL="paste-your-connection-string-here"
+   
+   (Replace "paste-your-connection-string-here" with what you copied)
+   
+4. Save the file
+
+================================================================================
+  STEP 5: Test It
+================================================================================
+
+1. Double-click "SETUP_DATABASE.bat"
+2. If it works, you'll see "Database setup complete!"
+3. If it fails, check that you copied the connection string correctly
+
+================================================================================
+  ✅ DONE!
+================================================================================
+
+After this, you can run START.bat and your website will work!
+
+================================================================================

@@ -1,0 +1,53 @@
+================================================================================
+  🎯 EASY SETUP - Just Follow These Steps!
+================================================================================
+
+YOU NEED: A free database (takes 2 minutes to get)
+
+STEP 1: GET FREE DATABASE
+-------------------------
+1. Open your web browser
+2. Go to: https://neon.tech
+3. Click "Sign Up" (it's FREE, no credit card)
+4. Click "Create Project"
+5. Name: realty-collective
+6. Click "Create"
+7. You'll see a connection string - COPY IT!
+   (It looks like: postgresql://user:pass@host/dbname)
+
+STEP 2: UPDATE .env FILE
+-------------------------
+1. Open the file: realty-collective\.env
+2. Find: DATABASE_URL=
+3. Paste your connection string after the = sign
+4. Save the file
+
+STEP 3: RUN SETUP SCRIPT
+-------------------------
+1. Open PowerShell in the realty-collective folder
+2. Type this and press Enter:
+   .\setup.ps1
+
+That's it! The script will do everything for you!
+
+OR if the script doesn't work, run these commands one by one:
+
+   npm run db:generate
+   npm run db:migrate
+   npm run db:seed
+   npm run dev
+
+STEP 4: OPEN BROWSER
+--------------------
+Go to: http://localhost:3000
+
+STEP 5: LOGIN
+-------------
+Email: admin@realtycollective.com
+Password: admin123
+
+================================================================================
+  ✅ DONE! You should see the dashboard!
+================================================================================
+
+If you get stuck, tell me what error you see and I'll help!

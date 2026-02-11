@@ -1,0 +1,48 @@
+================================================================================
+  🔧 QUICK FIX - "Site Can't Be Reached"
+================================================================================
+
+THE PROBLEM: Server isn't running or database isn't connected
+
+THE FIX: Follow these 3 steps
+
+================================================================================
+  STEP 1: UPDATE DATABASE
+================================================================================
+
+Run this command:
+  npm run db:migrate
+
+If it fails:
+  → Your DATABASE_URL in .env is wrong
+  → Get free database: https://neon.tech
+  → Update .env with connection string
+
+================================================================================
+  STEP 2: SEED DATABASE
+================================================================================
+
+Run this command:
+  npm run db:seed
+
+This creates:
+  - Admin: admin@realtycollective.com / admin123
+  - Director: director@realtycollective.com / director123
+  - Sample data
+
+================================================================================
+  STEP 3: START SERVER
+================================================================================
+
+Run this command:
+  npm run dev
+
+Look for: "Ready on http://localhost:3000"
+
+Then open: http://localhost:3000
+
+================================================================================
+  ✅ DONE!
+================================================================================
+
+If you still get errors, share the error message from terminal!
