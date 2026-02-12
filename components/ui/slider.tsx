@@ -5,7 +5,12 @@ import * as SliderPrimitive from "@radix-ui/react-slider"
 
 import { cn } from "@/lib/utils"
 
-const Slider = React.forwardRef(({ className, ...props }, ref) => (
+interface SliderProps extends React.ComponentPropsWithoutRef<typeof SliderPrimitive.Root> {}
+
+const Slider = React.forwardRef<
+  React.ComponentRef<typeof SliderPrimitive.Root>,
+  SliderProps
+>(({ className, ...props }, ref) => (
   <SliderPrimitive.Root
     ref={ref}
     className={cn("relative flex w-full touch-none select-none items-center", className)}

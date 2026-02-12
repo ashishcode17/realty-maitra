@@ -1,10 +1,10 @@
 'use client'
 
 import { memo } from 'react'
-import { Handle, Position, type NodeProps } from '@xyflow/react'
+import { Handle, Position, type Node, type NodeProps } from '@xyflow/react'
 import { ChevronRight, Minus, Plus, Users } from 'lucide-react'
 
-export interface MindmapNodeData {
+export interface MindmapNodeData extends Record<string, unknown> {
   name: string
   role: string
   city?: string | null
@@ -18,7 +18,8 @@ export interface MindmapNodeData {
   onCollapse?: (e: React.MouseEvent) => void
 }
 
-function MindmapNodeComponent({ data, selected }: NodeProps<MindmapNodeData>) {
+function MindmapNodeComponent(props: NodeProps<Node<MindmapNodeData>>) {
+  const { data, selected } = props
   const isMe = data.isMe ?? false
   const isActive = data.status === 'ACTIVE'
   const hasChildren = (data.hasChildren ?? data.childrenCount > 0)

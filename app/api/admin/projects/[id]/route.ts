@@ -5,13 +5,13 @@ import { requireAdmin } from '@/lib/middleware'
 /** GET: Admin get single project with slab */
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const admin = await requireAdmin(request)
     if (admin instanceof NextResponse) return admin
 
-    const { id } = await params
+    const { id } = await context.params
     const project = await prisma.project.findUnique({
       where: { id },
       include: { slabConfigs: true, projectDocuments: true },
@@ -34,13 +34,13 @@ export async function GET(
 /** PATCH: Admin update project and optional slab */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const admin = await requireAdmin(request)
     if (admin instanceof NextResponse) return admin
 
-    const { id } = await params
+    const { id } = await context.params
     const body = await request.json()
     const {
       name,
@@ -137,13 +137,13 @@ export async function PATCH(
 /** DELETE: Admin delete project (cascade: slab, docs, etc.) */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const admin = await requireAdmin(request)
     if (admin instanceof NextResponse) return admin
 
-    const { id } = await params
+    const { id } = await context.params
     const existing = await prisma.project.findUnique({ where: { id } })
     if (!existing) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 })

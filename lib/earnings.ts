@@ -37,7 +37,7 @@ export async function getSlabPctForUser(
   })
   if (!slab) return 0
   const key = ROLE_TO_SLAB_KEY[role] ?? 'bdmPct'
-  return (slab as Record<string, number>)[key] ?? 0
+  return (slab as unknown as Record<string, number>)[key] ?? 0
 }
 
 /**

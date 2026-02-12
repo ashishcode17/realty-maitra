@@ -4,14 +4,15 @@ import { requireAuth } from '@/lib/middleware'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const auth = await requireAuth(request)
     if (auth instanceof NextResponse) return auth
 
+    const { id } = await context.params
     const project = await prisma.project.findUnique({
-      where: { id: params.id },
+      where: { id },
     })
 
     if (!project) {
@@ -22,7 +23,7 @@ export async function GET(
     }
 
     const slab = await prisma.slabConfig.findUnique({
-      where: { projectId: params.id },
+      where: { projectId: id },
     })
 
     return NextResponse.json({ project, slab })

@@ -7,13 +7,13 @@ import { createAuditLog, getClientIp } from '@/lib/audit'
 /** GET: Admin get single user (with sponsor info) */
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const admin = await requireAdmin(request)
     if (admin instanceof NextResponse) return admin
 
-    const { id } = await params
+    const { id } = await context.params
     const user = await prisma.user.findUnique({
       where: { id },
       select: {
@@ -50,13 +50,13 @@ export async function GET(
 /** PATCH: Admin update user (e.g. sponsor reassignment, role, status) */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const admin = await requireAdmin(request)
     if (admin instanceof NextResponse) return admin
 
-    const { id } = await params
+    const { id } = await context.params
     const body = await request.json()
     const { sponsorId, role, status } = body as {
       sponsorId?: string | null

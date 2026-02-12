@@ -89,8 +89,8 @@ export default function AdminAuditPage() {
                       <p className="text-slate-500 text-sm">{log.actor?.email}</p>
                       <span className="inline-block mt-2 px-2 py-0.5 rounded bg-slate-700 text-slate-200 text-xs">{log.action}</span>
                       <p className="text-slate-400 text-sm mt-1">{log.entityType} {log.entityId && <span className="font-mono">{log.entityId.slice(0, 8)}…</span>}</p>
-                      {(meta.reason || meta.after) && (
-                        <p className="text-slate-500 text-xs mt-2 truncate max-w-full">{meta.reason ? String(meta.reason) : JSON.stringify(meta.after)}</p>
+                      {(meta.reason != null || meta.after != null) && (
+                        <p className="text-slate-500 text-xs mt-2 truncate max-w-full">{meta.reason != null ? String(meta.reason) : JSON.stringify(meta.after)}</p>
                       )}
                     </div>
                   )
@@ -136,10 +136,10 @@ export default function AdminAuditPage() {
                             )}
                           </td>
                           <td className="py-3 max-w-xs">
-                            {meta.reason && (
+                            {meta.reason != null && (
                               <span className="text-slate-400">{String(meta.reason)}</span>
                             )}
-                            {meta.after && (
+                            {meta.after != null && (
                               <pre className="text-xs text-slate-500 truncate max-w-[200px]">
                                 {JSON.stringify(meta.after)}
                               </pre>

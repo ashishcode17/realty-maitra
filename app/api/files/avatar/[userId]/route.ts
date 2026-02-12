@@ -12,13 +12,13 @@ const UPLOADS_PATH = path.join(process.cwd(), 'uploads')
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ userId: string }> }
+  context: { params: Promise<{ userId: string }> }
 ) {
   try {
     const auth = await requireAuth(request)
     if (auth instanceof NextResponse) return auth
 
-    const { userId } = await params
+    const { userId } = await context.params
     if (!userId) {
       return NextResponse.json({ error: 'User ID required' }, { status: 400 })
     }

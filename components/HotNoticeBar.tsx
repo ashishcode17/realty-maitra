@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
+import { authHeaders } from '@/lib/authFetch'
 
 interface Notification {
   id: string
@@ -18,9 +19,7 @@ export default function HotNoticeBar() {
   const [dismissed, setDismissed] = useState<string[]>([])
 
   useEffect(() => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
-    const headers = token ? { Authorization: `Bearer ${token}` } : {}
-    fetch('/api/notifications/global', { headers })
+    fetch('/api/notifications/global', { headers: authHeaders() })
       .then((res) => res.json())
       .then((data) => {
         if (data.notifications) {

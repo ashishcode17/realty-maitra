@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { MapPin, Building2 } from 'lucide-react'
 import { EmptyState } from '@/components/EmptyState'
+import { authHeaders } from '@/lib/authFetch'
 
 interface Project {
   id: string
@@ -22,9 +23,7 @@ export default function ProjectsPage() {
   const [filter, setFilter] = useState<'all' | 'ACTIVE' | 'UPCOMING' | 'CLOSED'>('all')
 
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    const headers = token ? { Authorization: `Bearer ${token}` } : {}
-    fetch('/api/projects', { headers })
+    fetch('/api/projects', { headers: authHeaders() })
       .then((res) => res.json())
       .then((data) => {
         if (data.projects) {

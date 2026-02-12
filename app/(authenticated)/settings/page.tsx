@@ -11,6 +11,7 @@ import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { AvatarWithAuth } from '@/components/AvatarWithAuth'
+import { authHeaders } from '@/lib/authFetch'
 import {
   User,
   Shield,
@@ -45,9 +46,7 @@ export default function SettingsPage() {
   const [adminSeedLoading, setAdminSeedLoading] = useState(false)
   const [adminClearLoading, setAdminClearLoading] = useState(false)
 
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
-  const headers = token ? { Authorization: `Bearer ${token}` } : {}
-
+  const headers = authHeaders()
   const loadData = async () => {
     try {
       const res = await fetch('/api/settings/me', { headers })

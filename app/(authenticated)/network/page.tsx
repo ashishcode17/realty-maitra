@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Users, UserPlus, QrCode, Search, Network } from 'lucide-react'
 import QRCode from 'qrcode'
 import { NetworkTreeView } from '@/components/NetworkTreeView'
+import { authHeaders } from '@/lib/authFetch'
 
 interface NetworkUser {
   id: string
@@ -46,9 +47,7 @@ export default function NetworkPage() {
   const effectiveRootName = isEntireNetwork ? platformRootName : (selectedRootId ? selectedRootName : 'Me')
 
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    const headers = token ? { Authorization: `Bearer ${token}` } : {}
-    fetch('/api/auth/me', { headers })
+    fetch('/api/auth/me', { headers: authHeaders() })
       .then((res) => res.json())
       .then((data) => {
         if (data.user) {
@@ -64,8 +63,7 @@ export default function NetworkPage() {
 
   useEffect(() => {
     if (!isAdmin) return
-    const token = localStorage.getItem('token')
-    const headers = token ? { Authorization: `Bearer ${token}` } : {}
+    const headers = authHeaders()
     Promise.all([
       fetch('/api/admin/users?limit=500', { headers }).then((r) => r.json()),
       fetch('/api/admin/network/root', { headers }).then((r) => r.json()),
@@ -80,8 +78,7 @@ export default function NetworkPage() {
 
   useEffect(() => {
     if (!user?.id && !effectiveRootId) return
-    const token = localStorage.getItem('token')
-    const headers = token ? { Authorization: `Bearer ${token}` } : {}
+    const headers = authHeaders()
     const rootParam = isAdmin && effectiveRootId ? `&rootId=${encodeURIComponent(effectiveRootId)}` : ''
     setLoading(true)
     Promise.all([

@@ -6,13 +6,13 @@ import { createAuditLog, getClientIp } from '@/lib/audit'
 /** PATCH: Admin assign lead or update any field */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const admin = await requireAdmin(request)
     if (admin instanceof NextResponse) return admin
 
-    const { id } = await params
+    const { id } = await context.params
     let body: {
       assignedToUserId?: string | null
       status?: string

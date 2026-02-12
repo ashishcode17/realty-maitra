@@ -5,13 +5,13 @@ import { requireAdmin } from '@/lib/middleware'
 /** GET: Admin get single session with slots and booking counts */
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const admin = await requireAdmin(request)
     if (admin instanceof NextResponse) return admin
 
-    const { id } = await params
+    const { id } = await context.params
     const session = await prisma.trainingSession.findUnique({
       where: { id },
       include: {
@@ -64,13 +64,13 @@ export async function GET(
 /** PATCH: Admin update session (and optionally replace slots) */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const admin = await requireAdmin(request)
     if (admin instanceof NextResponse) return admin
 
-    const { id } = await params
+    const { id } = await context.params
     const body = await request.json()
     const {
       title,
@@ -182,13 +182,13 @@ export async function PATCH(
 /** DELETE: Admin delete session (cascade: slots, bookings) */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const admin = await requireAdmin(request)
     if (admin instanceof NextResponse) return admin
 
-    const { id } = await params
+    const { id } = await context.params
     const existing = await prisma.trainingSession.findUnique({ where: { id } })
     if (!existing) {
       return NextResponse.json({ error: 'Session not found' }, { status: 404 })

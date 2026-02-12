@@ -5,6 +5,7 @@ import { Award, Trophy, Users } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { EmptyState } from '@/components/EmptyState'
+import { authHeaders } from '@/lib/authFetch'
 
 interface Challenge {
   id: string
@@ -29,8 +30,7 @@ export default function OffersPage() {
   const [activeTab, setActiveTab] = useState<'challenges' | 'wall'>('challenges')
 
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    const headers = token ? { Authorization: `Bearer ${token}` } : {}
+    const headers = authHeaders()
     fetch('/api/offers/challenges', { headers })
       .then((res) => res.json())
       .then((data) => {
@@ -52,11 +52,9 @@ export default function OffersPage() {
 
   const handleTakeChallenge = async (challengeId: string) => {
     try {
-      const token = localStorage.getItem('token')
-      const headers = token ? { Authorization: `Bearer ${token}` } : {}
       const res = await fetch(`/api/offers/challenges/${challengeId}/enroll`, {
         method: 'POST',
-        headers,
+        headers: authHeaders(),
       })
       const data = await res.json()
 

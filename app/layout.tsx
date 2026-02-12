@@ -9,18 +9,19 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+} as const;
+
 export const metadata: Metadata = {
   title: {
     default: `${brand.appName} - ${brand.tagline}`,
     template: `%s | ${brand.appName}`,
   },
   description: "A secure platform for real estate networking, training, and performance-based rewards",
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 5,
-    userScalable: true,
-  },
   openGraph: {
     title: brand.appName,
     description: brand.tagline,

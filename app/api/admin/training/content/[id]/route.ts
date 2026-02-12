@@ -6,13 +6,13 @@ import { handleApiError } from '@/lib/error-handler'
 /** GET: Admin get single training content */
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const admin = await requireAdmin(request)
     if (admin instanceof NextResponse) return admin
 
-    const { id } = await params
+    const { id } = await context.params
     const content = await prisma.trainingContent.findUnique({
       where: { id },
       include: {
@@ -33,13 +33,13 @@ export async function GET(
 /** PATCH: Admin update training content (metadata only; file replace via upload) */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const admin = await requireAdmin(request)
     if (admin instanceof NextResponse) return admin
 
-    const { id } = await params
+    const { id } = await context.params
     const existing = await prisma.trainingContent.findUnique({ where: { id } })
     if (!existing) {
       return NextResponse.json({ error: 'Content not found' }, { status: 404 })

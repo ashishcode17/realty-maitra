@@ -10,13 +10,13 @@ import { createAuditLog, getClientIp } from '@/lib/audit'
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const admin = await requireAdmin(request)
     if (admin instanceof NextResponse) return admin
 
-    const { id } = await params
+    const { id } = await context.params
     let body: { status?: string; reason?: string }
     try {
       body = await request.json()

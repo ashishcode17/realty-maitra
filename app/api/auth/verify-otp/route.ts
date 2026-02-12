@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     const pendingUser = await prisma.user.findFirst({
       where: {
         email: { startsWith: 'pending_' },
-        status: 'PENDING'
+        status: 'PENDING_VERIFICATION'
       }
     })
 

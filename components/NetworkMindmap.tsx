@@ -23,6 +23,7 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { MindmapNode, type MindmapNodeData } from './NetworkMindmapNode'
+import { authHeaders } from '@/lib/authFetch'
 import { buildTreeFromFlat, radialLayout } from '@/lib/mindmapLayout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -139,13 +140,10 @@ function MindmapInner({
   const [searchResults, setSearchResults] = useState<TreeMember[]>([])
   const [expandedNodeIds, setExpandedNodeIds] = useState<Set<string>>(new Set())
   const [minimapVisible, setMinimapVisible] = useState(true)
-  const [nodes, setNodes, onNodesChange] = useNodesState([])
-  const [edges, setEdges, onEdgesChange] = useEdgesState([])
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node<MindmapNodeData>>([])
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
 
-  const getHeaders = useCallback(() => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
-    return token ? { Authorization: `Bearer ${token}` } : {}
-  }, [])
+  const getHeaders = useCallback(() => authHeaders(), [])
 
   useEffect(() => {
     setExpandedNodeIds(new Set())
@@ -342,7 +340,7 @@ function MindmapInner({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeClick={handleNodeClick}
-        nodeTypes={nodeTypes}
+        nodeTypes={nodeTypes as React.ComponentProps<typeof ReactFlow>['nodeTypes']}
         edgeTypes={edgeTypes}
         fitView
         fitViewOptions={{ padding: 0.25 }}

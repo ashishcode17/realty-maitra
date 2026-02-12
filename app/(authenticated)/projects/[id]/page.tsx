@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Image from 'next/image'
 import { MapPin, Building2, FileText, Percent } from 'lucide-react'
+import { authHeaders } from '@/lib/authFetch'
 
 interface Project {
   id: string
@@ -35,9 +36,7 @@ export default function ProjectDetailPage() {
 
   useEffect(() => {
     if (params.id) {
-      const token = localStorage.getItem('token')
-      const headers = token ? { Authorization: `Bearer ${token}` } : {}
-      fetch(`/api/projects/${params.id}`, { headers })
+      fetch(`/api/projects/${params.id}`, { headers: authHeaders() })
         .then((res) => res.json())
         .then((data) => {
           if (data.project) {

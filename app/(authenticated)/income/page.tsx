@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { DollarSign, TrendingUp, Clock, CheckCircle, FileDown, Calendar } from 'lucide-react'
 import { EmptyState } from '@/components/EmptyState'
+import { authHeaders } from '@/lib/authFetch'
 
 interface Earning {
   id: string
@@ -41,8 +42,7 @@ export default function IncomePage() {
   const [statementLoading, setStatementLoading] = useState(false)
 
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    const headers = token ? { Authorization: `Bearer ${token}` } : {}
+    const headers = authHeaders()
     fetch('/api/income', { headers })
       .then((res) => res.json())
       .then((data) => {
@@ -72,9 +72,7 @@ export default function IncomePage() {
     : earnings.filter(e => e.status === filter)
 
   const fetchStatement = async (month: string, format: 'json' | 'csv') => {
-    const token = localStorage.getItem('token')
-    const headers = token ? { Authorization: `Bearer ${token}` } : {}
-    const res = await fetch(`/api/income/statement?month=${month}&format=${format}`, { headers })
+    const res = await fetch(`/api/income/statement?month=${month}&format=${format}`, { headers: authHeaders() })
     if (!res.ok) return null
     if (format === 'csv') {
       const blob = await res.blob()

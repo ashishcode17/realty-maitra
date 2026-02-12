@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { AvatarWithAuth } from '@/components/AvatarWithAuth'
 import { BrandLogo } from '@/components/BrandLogo'
 import { brand } from '@/lib/brand'
+import { authHeaders } from '@/lib/authFetch'
 import { toast } from 'sonner'
 import {
   DropdownMenu,
@@ -50,9 +51,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
     setSearchLoading(true)
     const t = setTimeout(() => {
-      const token = localStorage.getItem('token')
       fetch(`/api/search?q=${encodeURIComponent(searchQ.trim())}&limit=8`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        headers: authHeaders(),
       })
         .then((res) => res.json())
         .then((data) => {

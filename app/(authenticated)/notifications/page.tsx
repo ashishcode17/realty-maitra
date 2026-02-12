@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import Link from 'next/link'
 import { Bell } from 'lucide-react'
 import { EmptyState } from '@/components/EmptyState'
+import { authHeaders } from '@/lib/authFetch'
 
 interface Notification {
   id: string
@@ -21,9 +22,7 @@ export default function NotificationsPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    const headers = token ? { Authorization: `Bearer ${token}` } : {}
-    fetch('/api/notifications/global', { headers })
+    fetch('/api/notifications/global', { headers: authHeaders() })
       .then((res) => res.json())
       .then((data) => {
         if (data.notifications) setNotifications(data.notifications)

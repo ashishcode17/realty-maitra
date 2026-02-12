@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, memo } from 'react'
 import { ChevronDown, ChevronRight, Users } from 'lucide-react'
+import { authHeaders } from '@/lib/authFetch'
 
 export interface TreeNode {
   id: string
@@ -15,10 +16,8 @@ export interface TreeNode {
   parentId?: string | null
 }
 
-function getHeaders(): Record<string, string> {
-  if (typeof window === 'undefined') return {}
-  const token = localStorage.getItem('token')
-  return token ? { Authorization: `Bearer ${token}` } : {}
+function getHeaders(): HeadersInit {
+  return authHeaders()
 }
 
 function buildTreeFromFlat(flat: (TreeNode & { parentId?: string | null })[]): TreeNode | null {

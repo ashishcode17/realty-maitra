@@ -6,13 +6,13 @@ import { createAuditLog, getClientIp } from '@/lib/audit'
 /** PATCH: Update lead stage/notes (only assigned agent) */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const auth = await requireAuth(request)
     if (auth instanceof NextResponse) return auth
 
-    const { id } = await params
+    const { id } = await context.params
     let body: { status?: string; notes?: string; nextFollowUpAt?: string }
     try {
       body = await request.json()

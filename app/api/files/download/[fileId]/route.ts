@@ -4,9 +4,10 @@ import { prisma } from '@/lib/prisma'
 import path from 'path'
 import fs from 'fs/promises'
 
-type RouteContext = { params: Promise<{ fileId: string }> }
-
-export async function GET(request: NextRequest, context: RouteContext) {
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ fileId: string }> }
+) {
   try {
     const auth = await requireAuth(request)
     if (auth instanceof NextResponse) return auth

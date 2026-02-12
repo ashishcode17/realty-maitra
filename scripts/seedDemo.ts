@@ -1,5 +1,5 @@
 import 'dotenv/config'
-import { PrismaClient, UserRole, TrainingContentCategory, TrainingContentType } from '@prisma/client'
+import { OfferChallenge, PrismaClient, Project, TrainingContent, TrainingSession, User, UserRole, TrainingContentCategory, TrainingContentType } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import fs from 'fs/promises'
 import path from 'path'
@@ -168,7 +168,7 @@ async function seedTree(admin: { id: string }) {
   const cities = ['Noida', 'Delhi', 'Gurugram', 'Lucknow', 'Jaipur', 'Pune', 'Mumbai', 'Hyderabad']
   const password = 'demo123'
 
-  const ssmUsers = []
+  const ssmUsers: User[] = []
   for (let i = 1; i <= 5; i++) {
     const createdAt = daysAgo(randInt(1, 90))
     const ssm = await createUser({
@@ -302,7 +302,7 @@ async function seedProjects(admin: { id: string }) {
     },
   ]
 
-  const projects = []
+  const projects: Project[] = []
   for (const def of projectDefs) {
     const img = await copyAssetToUploads({ assetRelativePath: def.imgAsset, destBucket: 'projects', prefix: 'demo' })
     const doc = await copyAssetToUploads({ assetRelativePath: def.pdfAsset, destBucket: 'projects', prefix: 'demo' })
@@ -358,7 +358,7 @@ async function seedTraining(admin: { id: string }, projects: { id: string; name:
   const categories: TrainingContentCategory[] = ['ONBOARDING', 'SALES', 'PROJECTS', 'COMPLIANCE', 'SCRIPTS', 'TOOLS']
 
   // 12 PDFs
-  const pdfItems = []
+  const pdfItems: TrainingContent[] = []
   for (let i = 1; i <= 12; i++) {
     const file = await copyAssetToUploads({
       assetRelativePath: `training/training-${String(i).padStart(2, '0')}.pdf`,
@@ -389,7 +389,7 @@ async function seedTraining(admin: { id: string }, projects: { id: string; name:
   }
 
   // 8 documents/notes
-  const docItems = []
+  const docItems: TrainingContent[] = []
   for (let i = 1; i <= 8; i++) {
     const file = await copyAssetToUploads({
       assetRelativePath: `training/notes-${String(i).padStart(2, '0')}.docx`,
@@ -426,7 +426,7 @@ async function seedTraining(admin: { id: string }, projects: { id: string; name:
     'https://www.youtube.com/embed/aqz-KE-bpKQ',
     'https://www.youtube.com/embed/tgbNymZ7vqY',
   ]
-  const videoItems = []
+  const videoItems: TrainingContent[] = []
   for (let i = 1; i <= 10; i++) {
     videoItems.push(
       await prisma.trainingContent.create({
@@ -475,7 +475,7 @@ async function seedTraining(admin: { id: string }, projects: { id: string; name:
 }
 
 async function seedTrainingSessions(admin: { id: string }, users: { id: string }[]) {
-  const sessions = []
+  const sessions: TrainingSession[] = []
   for (let i = 1; i <= 6; i++) {
     const startInDays = randInt(1, 14)
     const startDate = new Date(Date.now() + startInDays * 24 * 60 * 60 * 1000)
@@ -536,7 +536,7 @@ async function seedTrainingSessions(admin: { id: string }, users: { id: string }
 }
 
 async function seedOffers(admin: { id: string }, users: { id: string }[]) {
-  const offers = []
+  const offers: OfferChallenge[] = []
   for (let i = 1; i <= 8; i++) {
     const banner = await copyAssetToUploads({
       assetRelativePath: `offers/offer-banner-${i}.png`,
