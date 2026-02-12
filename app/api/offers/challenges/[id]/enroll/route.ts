@@ -4,13 +4,13 @@ import { requireAuth } from '@/lib/middleware'
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const auth = await requireAuth(request)
     if (auth instanceof NextResponse) return auth
 
-    const challengeId = params.id
+    const { id: challengeId } = await context.params
 
     // Check if challenge exists and is active
     const challenge = await prisma.offerChallenge.findUnique({
