@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth } from '@/lib/middleware'
 
-export async function POST(
+type EnrollContext = { params: Promise<{ id: string }> }
+
+async function enrollPost(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
+  context: EnrollContext
+): Promise<NextResponse<{ error: string }> | NextResponse<{ success: boolean }>> {
   try {
     const auth = await requireAuth(request)
     if (auth instanceof NextResponse) return auth
@@ -79,3 +81,5 @@ export async function POST(
     )
   }
 }
+
+export const POST = enrollPost
