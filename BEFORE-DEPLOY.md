@@ -14,7 +14,18 @@ To remove **all** projects, **all** training, and **all** offers so you can add 
 
 ---
 
-## 1. Push code to GitHub first
+## 1. Build no longer needs the database (fixes P1002 timeout)
+
+The Vercel build runs only `prisma generate` and `next build`, so it **does not** connect to the database. That avoids the **P1002** (connection timeout) error during deploy.
+
+- **Migrations:** When you add or change Prisma migrations, run them once against production **before or after** you deploy. From **realty-collective** with `DATABASE_URL` in `.env` set to your production URL:  
+  `npx prisma migrate deploy`
+- **Seed:** To create DEMO1234 or seed data, run locally with prod `DATABASE_URL` if needed:  
+  `npm run seed:demo` or `npx tsx prisma/seed.ts`
+
+---
+
+## 2. Push code to GitHub first
 
 Vercel builds from GitHub. If you don’t push, it deploys old code.
 
@@ -66,7 +77,7 @@ On the **free (Hobby) plan**, Vercel limits you to **100 deployments per day** (
 
 ---
 
-## 2. Add env vars in Vercel (no Git needed)
+## 3. Add env vars in Vercel (no Git needed)
 
 Vercel → your project → **Settings** → **Environment Variables**.
 
@@ -86,7 +97,7 @@ Then **Redeploy** (Deployments → ⋮ → Redeploy) if you only changed env var
 
 ---
 
-## 3. Don’t open a different folder if you want to keep this chat
+## 4. Don’t open a different folder if you want to keep this chat
 
 If you open **only** the `realty-collective` folder in Cursor, the app may start a **new chat** and this one disappears.
 
