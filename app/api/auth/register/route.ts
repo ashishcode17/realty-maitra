@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { hashPassword, generateOTP, hashOTP, generateSponsorCode } from '@/lib/auth'
+import { hashPassword, generateOTP, hashOTP } from '@/lib/auth'
 import { getRoleRank } from '@/lib/roles'
 import { handleApiError } from '@/lib/error-handler'
 import { checkRateLimit, checkOtpSendRateLimit } from '@/lib/rateLimit'
 import { sendOTPEmail } from '@/lib/email'
 import { sendOTPSms } from '@/lib/sms'
-import { ensureDemoSponsorExists } from '@/lib/ensure-demo-sponsor'
+import {
+  resolveSponsorFromInviteCode,
+  normalizeInviteCode,
+  computePathForNewUser,
+  validateEmailNotTaken,
+  validatePhoneNotTaken,
+  JOIN_ERROR_CODES,
+} from '@/lib/join'
 import { nanoid } from 'nanoid'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -37,7 +44,7 @@ export async function POST(request: NextRequest) {
     const emailStr = typeof email === 'string' ? email.trim().toLowerCase() : ''
     const phoneStr = typeof phone === 'string' ? phone.trim() : ''
     const passwordStr = typeof password === 'string' ? password : ''
-    const sponsorCodeStr = typeof sponsorCode === 'string' ? sponsorCode.trim().toUpperCase() : ''
+    const sponsorCodeStr = normalizeInviteCode(sponsorCode)
 
     if (!nameStr || !emailStr || !phoneStr || !passwordStr || !sponsorCodeStr) {
       return NextResponse.json(
@@ -58,38 +65,32 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const existingUser = await prisma.user.findUnique({ where: { email: emailStr } })
-    if (existingUser) {
+    const emailOk = await validateEmailNotTaken(emailStr)
+    if (!emailOk) {
       return NextResponse.json(
-        { error: 'Email already registered', code: 'EMAIL_TAKEN' },
+        { error: 'Email already registered', code: JOIN_ERROR_CODES.EMAIL_TAKEN },
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       )
     }
 
-    let sponsor: { id: string; path: string[] | null } | null = await prisma.user.findFirst({
-      where: { sponsorCode: sponsorCodeStr, status: 'ACTIVE' },
-      select: { id: true, path: true },
-    })
-
-    // DEMO1234: ensure demo sponsor exists (so it works even if seed never ran)
-    if (!sponsor && sponsorCodeStr === 'DEMO1234') {
-      sponsor = await ensureDemoSponsorExists()
-    }
-    // First user: when DB has no ACTIVE sponsor, accept env FIRST_SPONSOR_CODE once
-    const firstCode = process.env.FIRST_SPONSOR_CODE?.trim().toUpperCase()
-    if (!sponsor && firstCode && sponsorCodeStr === firstCode) {
-      const count = await prisma.user.count({ where: { status: 'ACTIVE', sponsorCode: { not: null } } })
-      if (count === 0) sponsor = { id: '', path: [] }
+    const phoneOk = await validatePhoneNotTaken(phoneStr)
+    if (!phoneOk) {
+      return NextResponse.json(
+        { error: 'Phone already registered', code: 'PHONE_TAKEN' },
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      )
     }
 
+    const sponsor = await resolveSponsorFromInviteCode(sponsorCodeStr)
     if (!sponsor) {
       return NextResponse.json(
-        { error: 'Invalid sponsor code', code: 'INVALID_SPONSOR_CODE' },
+        { error: 'Invalid invite code', code: JOIN_ERROR_CODES.INVALID_INVITE_CODE },
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       )
     }
 
     const isFirstUser = sponsor.id === ''
+    const path = computePathForNewUser(sponsor)
 
     await prisma.user.deleteMany({ where: { email: `pending_${emailStr}` } })
     await prisma.otpVerification.deleteMany({ where: { identifier: emailStr, purpose: 'REGISTER' } })
@@ -109,7 +110,7 @@ export async function POST(request: NextRequest) {
         role: 'BDM',
         roleRank: getRoleRank('BDM'),
         sponsorId: isFirstUser ? null : sponsor.id,
-        path: isFirstUser ? [] : [...(sponsor.path || []), sponsor.id],
+        path,
         status: 'PENDING_VERIFICATION',
         emailVerified: false,
         sponsorCode: pendingCode,

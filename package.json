@@ -15,6 +15,7 @@
     "seed:demo": "tsx scripts/seedDemo.ts",
     "clear:demo": "tsx scripts/clearDemoData.ts",
     "clear:launch": "tsx scripts/clearForLaunch.ts",
+    "verify:tree-rules": "tsx scripts/verify-tree-rules.ts",
     "delete:users": "tsx scripts/deleteAllUserData.ts",
     "test:db": "node scripts/test-db-connection.js",
     "db:studio": "prisma studio"

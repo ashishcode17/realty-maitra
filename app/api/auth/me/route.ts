@@ -23,7 +23,12 @@ export async function GET(request: NextRequest) {
         phoneVerified: true,
         createdAt: true,
         sponsorId: true,
+        sponsorCode: true,
+        sponsorCodeUsed: true,
         isDemo: true,
+        sponsor: {
+          select: { id: true, name: true, sponsorCode: true },
+        },
       },
     })
 
@@ -34,7 +39,28 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    return NextResponse.json({ user })
+    const sponsor = user.sponsor
+    const userPayload = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      city: user.city,
+      profilePhotoUrl: user.profilePhotoUrl,
+      role: user.role,
+      roleRank: user.roleRank,
+      status: user.status,
+      emailVerified: user.emailVerified,
+      phoneVerified: user.phoneVerified,
+      createdAt: user.createdAt,
+      sponsorId: user.sponsorId,
+      sponsorCode: user.sponsorCode,
+      sponsorCodeUsed: user.sponsorCodeUsed,
+      isDemo: user.isDemo,
+      joinedUnderSponsorName: sponsor?.name ?? null,
+      joinedUnderSponsorCode: user.sponsorCodeUsed ?? sponsor?.sponsorCode ?? null,
+    }
+    return NextResponse.json({ user: userPayload })
   } catch (error: any) {
     console.error('Get user error:', error)
     return NextResponse.json(

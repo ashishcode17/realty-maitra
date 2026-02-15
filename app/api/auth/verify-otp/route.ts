@@ -95,28 +95,41 @@ export async function POST(request: NextRequest) {
     }
 
     const actualEmail = pendingUser.email.replace(/^pending_/, '')
-    const sponsorCodeUsed = pendingUser.sponsor?.sponsorCode ?? null
+    const invitedBySponsorCode = pendingUser.sponsor?.sponsorCode ?? null
+    const invitedByUserId = pendingUser.sponsorId ?? null
+    const joinTimestamp = new Date()
 
-    const newUser = await prisma.user.create({
-      data: {
-        name: pendingUser.name,
-        email: actualEmail,
-        phone: pendingUser.phone,
-        city: pendingUser.city,
-        passwordHash: pendingUser.passwordHash,
-        role: 'BDM',
-        roleRank: getRoleRank('BDM'),
-        sponsorId: pendingUser.sponsorId,
-        path: pendingUser.path ?? [],
-        sponsorCode: generateSponsorCode(),
-        sponsorCodeUsed,
-        status: 'ACTIVE',
-        emailVerified: true,
-        emailVerifiedAt: new Date(),
-        phoneVerified: true,
-        phoneVerifiedAt: new Date(),
-      },
-    })
+    let newUser: { id: string; name: string; email: string; role: string; sponsorCode: string | null }
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        newUser = await prisma.user.create({
+          data: {
+            name: pendingUser.name,
+            email: actualEmail,
+            phone: pendingUser.phone,
+            city: pendingUser.city,
+            passwordHash: pendingUser.passwordHash,
+            role: 'BDM',
+            roleRank: getRoleRank('BDM'),
+            sponsorId: pendingUser.sponsorId,
+            path: pendingUser.path ?? [],
+            sponsorCode: generateSponsorCode(),
+            sponsorCodeUsed: invitedBySponsorCode,
+            status: 'ACTIVE',
+            emailVerified: true,
+            emailVerifiedAt: joinTimestamp,
+            phoneVerified: true,
+            phoneVerifiedAt: joinTimestamp,
+          },
+        })
+        break
+      } catch (e: unknown) {
+        const isUniqueViolation = (e as { code?: string })?.code === 'P2002'
+        if (isUniqueViolation && attempt < 4) continue
+        throw e
+      }
+    }
+    if (!newUser!) throw new Error('User creation failed')
 
     await prisma.otpVerification.delete({ where: { id: record.id } }).catch(() => {})
     await prisma.user.delete({ where: { id: pendingUserId } }).catch(() => {})
@@ -126,7 +139,11 @@ export async function POST(request: NextRequest) {
       action: 'USER_CREATED',
       entityType: 'User',
       entityId: newUser.id,
-      metaJson: { sponsorId: newUser.sponsorId, sponsorCodeUsed },
+      metaJson: {
+        invitedByUserId,
+        invitedBySponsorCode,
+        joinTimestamp: joinTimestamp.toISOString(),
+      },
       ip: getClientIp(request),
     }).catch(() => {})
 

@@ -37,7 +37,10 @@ export async function GET(request: NextRequest) {
       }
       const path = (target.path || []) as string[]
       if (!path.includes(auth.userId)) {
-        return NextResponse.json({ error: 'You can only load children in your subtree' }, { status: 403 })
+        return NextResponse.json(
+          { error: 'You can only load children in your subtree', code: 'forbidden_visibility' },
+          { status: 403 }
+        )
       }
     }
 
@@ -61,6 +64,7 @@ export async function GET(request: NextRequest) {
         lastActive: true,
         updatedAt: true,
       },
+      orderBy: { createdAt: 'asc' },
     })
 
     const userIds = children.map((u) => u.id)

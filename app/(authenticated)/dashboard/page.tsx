@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Users, TrendingUp, Award, Calendar, ArrowUpRight } from 'lucide-react'
+import { Users, TrendingUp, Award, Calendar, ArrowUpRight, UserPlus, Copy } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 
@@ -133,25 +133,50 @@ export default function DashboardPage() {
       </Card>
 
       {user?.id && (
-        <Card className="bg-emerald-900/20 border-emerald-800">
-          <CardContent className="pt-6">
-            <h3 className="text-white font-semibold mb-2">Your Sponsor Code</h3>
-            <div className="flex items-center space-x-2">
-              <code className="px-4 py-2 bg-slate-900 rounded font-mono text-emerald-400 text-xl">
-                {user.id.substring(0, 8).toUpperCase()}
-              </code>
-              <Button
-                onClick={() => {
-                  navigator.clipboard.writeText(user.id)
-                  toast.success('Code copied!')
-                }}
-                className="bg-emerald-600 hover:bg-emerald-700"
-              >
-                Copy
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <>
+          {(user.joinedUnderSponsorName || user.joinedUnderSponsorCode) && (
+            <Card className="bg-slate-800 border-slate-700">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <UserPlus className="h-5 w-5" /> Team
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <p className="text-slate-300">
+                  You joined under: <span className="font-semibold text-white">{user.joinedUnderSponsorName ?? '—'}</span>
+                </p>
+                <p className="text-slate-300">
+                  Sponsor code: <span className="font-mono text-slate-200">{user.joinedUnderSponsorCode ?? '—'}</span>
+                </p>
+                <p className="text-slate-500 text-xs mt-2">This is set from your invite code at registration and cannot be changed.</p>
+              </CardContent>
+            </Card>
+          )}
+          <Card className="bg-emerald-900/20 border-emerald-800">
+            <CardContent className="pt-6">
+              <h3 className="text-white font-semibold mb-2">Your invite code</h3>
+              <p className="text-slate-300 text-sm mb-2">Share this code so others can join under you.</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <code className="px-4 py-2 bg-slate-900 rounded font-mono text-emerald-400 text-xl">
+                  {user.sponsorCode || '—'}
+                </code>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    const code = user.sponsorCode || ''
+                    if (code) {
+                      navigator.clipboard.writeText(code)
+                      toast.success('Invite code copied!')
+                    }
+                  }}
+                  className="bg-emerald-600 hover:bg-emerald-700"
+                >
+                  <Copy className="h-4 w-4 mr-1" /> Copy
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </>
       )}
     </div>
   )

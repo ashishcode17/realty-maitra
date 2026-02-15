@@ -64,7 +64,7 @@ export async function getSubtreeWithDetails(userId: string) {
       lastActive: true,
       isDemo: true,
     },
-    orderBy: { createdAt: 'desc' },
+    orderBy: { createdAt: 'asc' },
   })
 }
 
@@ -87,7 +87,7 @@ export async function getDirectDownlines(userId: string) {
       sponsorId: true,
       path: true,
     },
-    orderBy: { createdAt: 'desc' },
+    orderBy: { createdAt: 'asc' },
   })
 }
 
