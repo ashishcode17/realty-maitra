@@ -137,21 +137,27 @@ export async function POST(request: NextRequest) {
     const channels: string[] = []
     if (emailSent) channels.push('email')
     if (smsSent) channels.push('phone')
-    const message =
-      channels.length === 2
-        ? 'OTP sent to your email and phone'
-        : channels.length === 1
-          ? `OTP sent to your ${channels[0]}`
-          : phoneStr || process.env.SMTP_USER
-            ? 'OTP could not be sent. Check number and email, or try again.'
-            : 'OTP sent. Check your inbox and messages.'
+    const attemptedSms = !!phoneStr
+    const smsFailed = attemptedSms && !smsSent
+    let message: string
+    if (channels.length === 2) {
+      message = 'OTP sent to your email and phone'
+    } else if (emailSent) {
+      message = smsFailed ? 'OTP sent to your email. SMS could not be sent.' : 'OTP sent to your email'
+    } else if (smsSent) {
+      message = 'OTP sent to your phone'
+    } else {
+      message = phoneStr || process.env.SMTP_USER
+        ? 'OTP could not be sent. Check number and email, or try again.'
+        : 'OTP sent. Check your inbox and messages.'
+    }
 
     const res: { message: string; email: string; mockOTP?: string; sentTo?: string[]; smsFailed?: boolean } = {
       message,
       email: emailStr,
       sentTo: channels.length ? channels : undefined,
     }
-    if (phoneStr && !smsSent) res.smsFailed = true
+    if (smsFailed) res.smsFailed = true
     if (isDev) res.mockOTP = otp
 
     return NextResponse.json(res, { headers: { 'Content-Type': 'application/json' } })

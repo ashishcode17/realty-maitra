@@ -18,7 +18,7 @@ Set in Vercel → Settings → Environment Variables:
 
 ## 2. SMS – India (choose one or more)
 
-The app tries **Fast2SMS** first, then **2Factor.in**, then **Twilio**. Set the one you want to use.
+When you set **2Factor**, the app uses it first for Indian numbers. Otherwise it tries Fast2SMS, then 2Factor, then Twilio.
 
 ### Option A: Fast2SMS
 
@@ -53,16 +53,21 @@ You do **not** need to add or register any phone numbers on Fast2SMS. The app se
 
 ### Option B: 2Factor.in (often more reliable in India)
 
-If Fast2SMS doesn’t work (DLT, balance, etc.), use **2Factor.in**:
+If you have 2Factor balance and set the key, the app uses **2Factor first** for Indian numbers.
 
-1. Sign up at **https://2factor.in**
-2. Get your **API key** from the dashboard.
-3. In Vercel → Environment Variables, add:
-   - **Name:** `TWO_FACTOR_API_KEY`
-   - **Value:** (your 2Factor API key)
-4. Redeploy.
+1. Sign up at **https://2factor.in** and add SMS balance.
+2. Get your **API key** from the dashboard (SMS / OTP section).
+3. In Vercel → **Settings** → **Environment Variables**, add:
+   - **Name (exactly):** `TWO_FACTOR_API_KEY`  
+   - **Value:** your 2Factor API key (no quotes, no spaces)
+   - **Environment:** Production (and Preview if you use it)
+4. **Redeploy** (Deployments → ⋮ → Redeploy) so the new env is used.
 
-2Factor is paid (e.g. ₹0.30/SMS) but usually works without DLT hassles. The app will try Fast2SMS first; if it fails, it will try 2Factor automatically.
+**If SMS still doesn’t go (only email):**
+
+- Confirm the variable name is **exactly** `TWO_FACTOR_API_KEY` (all caps, underscore).
+- Redeploy after adding or changing the variable.
+- After sending an OTP, open **Vercel** → your project → **Logs** (or **Deployments** → latest → **Functions**). Look for lines starting with `[SMS] 2Factor` – the next line shows the HTTP status and 2Factor’s response (e.g. Invalid API Key, Low Balance). That tells you what to fix.
 
 ### Option C: Twilio (works for India and international)
 

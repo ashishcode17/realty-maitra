@@ -126,6 +126,7 @@ export default function RegisterPage() {
                   <div className="space-y-2">
                     <Label htmlFor="phone" className="text-slate-300">Phone *</Label>
                     <Input id="phone" placeholder="9876543210 or +91 9876543210" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} required className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400" />
+                    <p className="text-xs text-slate-400">OTP on phone works when TWO_FACTOR_API_KEY or FAST2SMS_API_KEY is set in Vercel.</p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="city" className="text-slate-300">City</Label>

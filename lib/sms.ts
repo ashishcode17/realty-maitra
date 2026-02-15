@@ -93,24 +93,25 @@ async function sendViaFast2SMS(phone: string, otp: string): Promise<boolean> {
 }
 
 /**
- * 2Factor.in – India OTP. Simple API, paid (e.g. ₹0.30/SMS). Set TWO_FACTOR_API_KEY in Vercel.
+ * 2Factor.in – India OTP. Set TWO_FACTOR_API_KEY in Vercel.
  * Docs: https://2factor.in/API/DOCS/SMS_OTP.html
  */
 async function sendVia2Factor(phone: string, otp: string): Promise<boolean> {
-  const apiKey = process.env.TWO_FACTOR_API_KEY?.trim()
+  const apiKey = (process.env.TWO_FACTOR_API_KEY || process.env['2FACTOR_API_KEY'] || '').trim()
   if (!apiKey) return false
 
   const num = normalizeIndianNumber(phone)
-  if (!num || num.length !== 10) return false
+  if (!num || num.length !== 10) {
+    console.warn('[SMS] 2Factor: invalid Indian number (need 10 digits):', phone?.replace(/\d/g, 'X'))
+    return false
+  }
 
+  // 2Factor docs: POST https://2factor.in/API/V1/{api_key}/SMS/{phone_number}/{otp_code}
+  // phone_number = 10-digit Indian, no country code
   const url = `https://2factor.in/API/V1/${apiKey}/SMS/${num}/${otp}`
   try {
     const res = await fetch(url, { method: 'POST' })
     const text = await res.text()
-    if (!res.ok) {
-      console.error('[SMS] 2Factor HTTP', res.status, text?.slice(0, 200))
-      return false
-    }
     const data = (() => {
       try {
         return JSON.parse(text)
@@ -118,8 +119,14 @@ async function sendVia2Factor(phone: string, otp: string): Promise<boolean> {
         return {}
       }
     })()
-    if (data.Status !== 'Success' && data.Status !== 'success') {
-      console.error('[SMS] 2Factor API:', JSON.stringify(data))
+
+    if (!res.ok) {
+      console.error('[SMS] 2Factor HTTP', res.status, text?.slice(0, 400))
+      return false
+    }
+    const status = data.Status ?? data.status ?? ''
+    if (String(status).toLowerCase() !== 'success') {
+      console.error('[SMS] 2Factor API response:', JSON.stringify(data), 'raw:', text?.slice(0, 200))
       return false
     }
     return true
@@ -171,11 +178,15 @@ async function sendViaTwilio(phone: string, otp: string): Promise<boolean> {
 
 /**
  * Send OTP by SMS.
- * Indian numbers: tries Fast2SMS → 2Factor.in → Twilio (use whichever you set in Vercel).
+ * Indian numbers: tries 2Factor.in first if key set, then Fast2SMS, then Twilio.
  * Others: Twilio only.
  */
 export async function sendOTPSms(phone: string, otp: string): Promise<boolean> {
   if (isIndianNumber(phone)) {
+    // Prefer 2Factor when configured (e.g. you have balance there)
+    if ((process.env.TWO_FACTOR_API_KEY || process.env['2FACTOR_API_KEY'])?.trim()) {
+      if (await sendVia2Factor(phone, otp)) return true
+    }
     if (await sendViaFast2SMS(phone, otp)) return true
     if (await sendVia2Factor(phone, otp)) return true
   }
