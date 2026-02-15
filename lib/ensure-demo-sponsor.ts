@@ -10,12 +10,12 @@ const DIRECTOR_EMAIL = 'director@realtycollective.com'
  * Ensures the demo sponsor (DEMO1234) exists so registration works even if seed never ran.
  * Upserts admin and director with DEMO1234; safe to call on every register with code DEMO1234.
  */
-export async function ensureDemoSponsorExists(): Promise<{ id: string; path: string[] | null } | null> {
+export async function ensureDemoSponsorExists(): Promise<{ id: string; path: string[] } | null> {
   let sponsor = await prisma.user.findFirst({
     where: { sponsorCode: DEMO_SPONSOR_CODE, status: 'ACTIVE' },
     select: { id: true, path: true },
   })
-  if (sponsor) return sponsor
+  if (sponsor) return { id: sponsor.id, path: sponsor.path ?? [] }
 
   const adminPassword = bcrypt.hashSync('admin123', 10)
   const admin = await prisma.user.upsert({
@@ -58,5 +58,5 @@ export async function ensureDemoSponsorExists(): Promise<{ id: string; path: str
     },
   })
 
-  return { id: director.id, path: director.path }
+  return { id: director.id, path: director.path ?? [] }
 }
