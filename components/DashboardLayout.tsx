@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
+import { useClerk } from '@clerk/nextjs'
 import { 
   LayoutDashboard, Users, Building2, TrendingUp, 
   BookOpen, Target, Bell, Settings, LogOut, 
@@ -26,6 +27,7 @@ import {
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
+  const { signOut: clerkSignOut } = useClerk()
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -85,22 +87,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const checkAuth = async () => {
     try {
-      const token = localStorage.getItem('token')
-      
-      if (!token) {
-        router.push('/login')
-        return
-      }
-
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
       const response = await fetch('/api/auth/me', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       })
 
+      if (response.status === 403) {
+        const data = await response.json().catch(() => ({}))
+        if (data.needOnboarding) {
+          router.push('/onboarding')
+          return
+        }
+      }
+
       if (!response.ok) {
-        // Token might be invalid, clear it and redirect
-        localStorage.removeItem('token')
+        if (typeof window !== 'undefined') localStorage.removeItem('token')
         throw new Error('Auth failed')
       }
 
@@ -125,16 +126,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const handleLogout = async () => {
     try {
-      const token = localStorage.getItem('token')
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
       if (token) {
         await fetch('/api/auth/logout', {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
         })
       }
-      localStorage.removeItem('token')
+      if (typeof window !== 'undefined') localStorage.removeItem('token')
+      if (clerkSignOut) {
+        await clerkSignOut({ redirectUrl: '/login' })
+      } else {
+        router.push('/login')
+      }
       toast.success('Logged out successfully')
-      router.push('/login')
     } catch {
       localStorage.removeItem('token')
       toast.success('Logged out')

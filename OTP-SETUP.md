@@ -22,7 +22,7 @@ When you set **2Factor**, the app uses it first for Indian numbers. Otherwise it
 
 ### Option A: Fast2SMS
 
-**Fast2SMS** is India-based. You do **not** add “numbers” anywhere – the API sends to whatever 10-digit Indian number the user enters. You only need the **API key** and (for the free OTP route) **wallet balance**.
+**Fast2SMS** is India-based. The normal OTP route needs **DLT registration**; if you skip DLT, set `FAST2SMS_USE_QUICK_SMS` = `true` in Vercel (Quick SMS, ~₹5/SMS, no DLT). You do **not** add “numbers” anywhere – the API sends to whatever 10-digit Indian number the user enters. You only need the **API key** and (for the free OTP route) **wallet balance**.
 
 ### Right way to set up Fast2SMS
 
@@ -49,7 +49,7 @@ You do **not** need to add or register any phone numbers on Fast2SMS. The app se
 4. **Optional – Quick SMS route (₹5 per SMS):** If the normal OTP route keeps failing, you can use the “Quick SMS” route (no DLT, often more reliable). In Vercel env add:
    - **Name:** `FAST2SMS_USE_QUICK_SMS`
    - **Value:** `true`
-   Then redeploy. Each OTP will cost ₹5 from your Fast2SMS wallet.
+   Then redeploy. Each OTP costs ~₹5/SMS. **Use this if the normal route fails due to DLT** – Quick SMS needs no DLT registration.
 
 ### Option B: 2Factor.in (often more reliable in India)
 
@@ -62,6 +62,12 @@ If you have 2Factor balance and set the key, the app uses **2Factor first** for 
    - **Value:** your 2Factor API key (no quotes, no spaces)
    - **Environment:** Production (and Preview if you use it)
 4. **Redeploy** (Deployments → ⋮ → Redeploy) so the new env is used.
+
+**If you get a phone call (voice) instead of an SMS:**
+
+- 2Factor sometimes **falls back to a voice call** if SMS fails (e.g. DLT/operator). We only call their **SMS** endpoint; the voice fallback is on their side.
+- **To get SMS only:** (1) In the 2Factor dashboard, check for a setting like “Delivery preference” or “Disable voice fallback”. (2) Or use **Fast2SMS** for SMS-only: set `FAST2SMS_API_KEY` in Vercel (we try Fast2SMS first, so you’ll get SMS only).
+- If you only need SMS, prefer adding **Fast2SMS** (Option A above); the app will use it first and send SMS only.
 
 **If SMS still doesn’t go (only email):**
 

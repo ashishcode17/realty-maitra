@@ -1,14 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth as clerkAuth } from '@clerk/nextjs/server'
 import { prisma } from '@/lib/prisma'
-import { requireAuth } from '@/lib/middleware'
+import { getAuthUser } from '@/lib/middleware'
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await requireAuth(request)
-    if (auth instanceof NextResponse) return auth
+    const auth = await getAuthUser(request)
+    if (!auth) {
+      const { userId } = await clerkAuth()
+      if (userId) {
+        return NextResponse.json({ needOnboarding: true }, { status: 403 })
+      }
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
     const user = await prisma.user.findUnique({
-      where: { id: auth.userId },
+      where: { id: auth.id },
       select: {
         id: true,
         name: true,

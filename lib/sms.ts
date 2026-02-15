@@ -177,16 +177,13 @@ async function sendViaTwilio(phone: string, otp: string): Promise<boolean> {
 }
 
 /**
- * Send OTP by SMS.
- * Indian numbers: tries 2Factor.in first if key set, then Fast2SMS, then Twilio.
- * Others: Twilio only.
+ * Send OTP by SMS only (no voice call).
+ * Indian numbers: Fast2SMS is SMS-only; 2Factor can fall back to voice on their side if SMS fails.
+ * Order: Fast2SMS first (SMS only), then 2Factor, then Twilio.
  */
 export async function sendOTPSms(phone: string, otp: string): Promise<boolean> {
   if (isIndianNumber(phone)) {
-    // Prefer 2Factor when configured (e.g. you have balance there)
-    if ((process.env.TWO_FACTOR_API_KEY || process.env['2FACTOR_API_KEY'])?.trim()) {
-      if (await sendVia2Factor(phone, otp)) return true
-    }
+    // Prefer Fast2SMS first – SMS only (2Factor may deliver via voice call if SMS fails)
     if (await sendViaFast2SMS(phone, otp)) return true
     if (await sendVia2Factor(phone, otp)) return true
   }

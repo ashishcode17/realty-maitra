@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from "sonner";
 import { brand } from "@/lib/brand";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { ClerkProvider } from "@clerk/nextjs";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -40,12 +41,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${inter.variable} font-sans antialiased`}>
-        {children}
-        <Toaster position="top-right" richColors />
-        <SpeedInsights />
-      </body>
-    </html>
+    <ClerkProvider>
+      <html lang="en">
+        <body className={`${inter.variable} font-sans antialiased`}>
+          {children}
+          <Toaster position="top-right" richColors />
+          <SpeedInsights />
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }
