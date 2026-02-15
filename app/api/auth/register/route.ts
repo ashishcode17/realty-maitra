@@ -4,7 +4,6 @@ import { hashPassword, generateOTP, hashOTP, generateSponsorCode } from '@/lib/a
 import { getRoleRank } from '@/lib/roles'
 import { handleApiError } from '@/lib/error-handler'
 import { checkRateLimit, checkOtpSendRateLimit } from '@/lib/rateLimit'
-import { sendOTPEmail } from '@/lib/email'
 import { sendOTPSms } from '@/lib/sms'
 import { nanoid } from 'nanoid'
 
@@ -116,26 +115,18 @@ export async function POST(request: NextRequest) {
     })
 
     const phoneStr = typeof phone === 'string' ? phone.trim() : ''
-    const [emailSent, smsSent] = await Promise.all([
-      sendOTPEmail(emailStr, otp),
-      phoneStr ? sendOTPSms(phoneStr, otp) : Promise.resolve(false),
-    ])
-    if (!emailSent && !smsSent && isDev) {
+    // Phone-only test: email OTP disabled until SMS is verified
+    const smsSent = phoneStr ? await sendOTPSms(phoneStr, otp) : false
+    if (!smsSent && isDev) {
       console.log(`[Dev] OTP for ${emailStr}${phoneStr ? ` / ${phoneStr}` : ''}: ${otp}`)
     }
 
-    const channels: string[] = []
-    if (emailSent) channels.push('email')
-    if (smsSent) channels.push('phone')
-    const message =
-      channels.length === 2
-        ? 'OTP sent to your email and phone'
-        : channels.length === 1
-          ? `OTP sent to your ${channels[0]}`
-          : process.env.SMTP_USER && process.env.SMTP_PASS
-            ? 'OTP could not be sent. Check email and phone, or try again.'
-            : 'OTP sent (check your inbox and messages). If you don’t receive it, contact support.'
-
+    const channels: string[] = smsSent ? ['phone'] : []
+    const message = smsSent
+      ? 'OTP sent to your phone'
+      : phoneStr
+        ? 'OTP could not be sent to your phone. Check number or try again.'
+        : 'Add a phone number to receive OTP.'
     const res: { message: string; email: string; mockOTP?: string; sentTo?: string[] } = {
       message,
       email: emailStr,
