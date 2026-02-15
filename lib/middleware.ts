@@ -1,25 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
 import { verifyToken } from './auth'
 import { prisma } from './prisma'
-
-/** Try Clerk first, then Bearer JWT. Use in API route handlers. */
-export async function getAuthUser(request: NextRequest) {
-  const { userId: clerkUserId } = await auth()
-  if (clerkUserId) {
-    const u = await prisma.user.findFirst({
-      where: { clerkUserId },
-    })
-    if (u && (u.status === 'ACTIVE' || u.status === 'FROZEN')) {
-      return {
-        ...u,
-        userId: u.id,
-        _id: u.id,
-      }
-    }
-  }
-  return await authenticateUser(request)
-}
 
 export async function authenticateUser(request: NextRequest) {
   const authHeader = request.headers.get('authorization')
@@ -58,7 +39,7 @@ export async function authenticateUser(request: NextRequest) {
 }
 
 export async function requireAuth(request: NextRequest) {
-  const user = await getAuthUser(request)
+  const user = await authenticateUser(request)
 
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -68,7 +49,7 @@ export async function requireAuth(request: NextRequest) {
 }
 
 export async function requireAdmin(request: NextRequest) {
-  const user = await getAuthUser(request)
+  const user = await authenticateUser(request)
   
   if (!user || (user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN')) {
     return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
