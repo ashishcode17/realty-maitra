@@ -35,10 +35,11 @@ export async function POST(request: NextRequest) {
     const { name, email, phone, city, password, sponsorCode } = body
     const nameStr = typeof name === 'string' ? name.trim() : ''
     const emailStr = typeof email === 'string' ? email.trim().toLowerCase() : ''
+    const phoneStr = typeof phone === 'string' ? phone.trim() : ''
     const passwordStr = typeof password === 'string' ? password : ''
     const sponsorCodeStr = typeof sponsorCode === 'string' ? sponsorCode.trim().toUpperCase() : ''
 
-    if (!nameStr || !emailStr || !passwordStr || !sponsorCodeStr) {
+    if (!nameStr || !emailStr || !phoneStr || !passwordStr || !sponsorCodeStr) {
       return NextResponse.json(
         { error: 'All fields are required', code: 'MISSING_FIELDS' },
         { status: 400, headers: { 'Content-Type': 'application/json' } }
@@ -102,7 +103,7 @@ export async function POST(request: NextRequest) {
       data: {
         name: nameStr,
         email: `pending_${emailStr}`,
-        phone: typeof phone === 'string' ? phone.trim() || null : null,
+        phone: phoneStr,
         city: typeof city === 'string' ? city.trim() || null : null,
         passwordHash: hashPassword(passwordStr),
         role: 'BDM',
@@ -125,10 +126,9 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    const phoneStr = typeof phone === 'string' ? phone.trim() : ''
     const [emailSent, smsSent] = await Promise.all([
       sendOTPEmail(emailStr, otp),
-      phoneStr ? sendOTPSms(phoneStr, otp) : Promise.resolve(false),
+      sendOTPSms(phoneStr, otp),
     ])
     if (!emailSent && !smsSent && isDev) {
       console.log(`[Dev] OTP for ${emailStr}${phoneStr ? ` / ${phoneStr}` : ''}: ${otp}`)

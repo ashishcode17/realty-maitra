@@ -42,6 +42,14 @@ Follow this checklist. **One mismatch is enough** for Vercel to build the wrong 
 6. **Hard refresh the site**  
    After a new deploy, do a hard refresh so the browser doesn’t show cached files: **Ctrl+Shift+R** (or Cmd+Shift+R on Mac).
 
+### “Resource is limited – try again in 15 hours” (100 deploys/day)
+
+On the **free (Hobby) plan**, Vercel limits you to **100 deployments per day** (see [Vercel Limits](https://vercel.com/docs/limits/overview): “Deployments Created per Day” = 100 for Hobby). So the free tier is **not** unlimited deploys.
+
+- **When you see it:** You’ve hit that daily limit. The counter resets after the stated time (e.g. 15 hours).
+- **What to do now:** Wait until the limit resets, or upgrade to **Pro** (6,000 deploys/day).
+- **To avoid hitting it:** Don’t run DEPLOY-LIVE.bat on every tiny change. Make several edits, then commit once and push once so one push = one deployment.
+
 ---
 
 ## 2. Add env vars in Vercel (no Git needed)

@@ -106,9 +106,6 @@ export default function RegisterPage() {
           <Card className="bg-slate-800 border-slate-600 shadow-xl">
             <CardHeader>
               <CardTitle className="text-white text-xl">Join {brand.appName}</CardTitle>
-              <CardDescription className="text-slate-300">
-                We&apos;ll send a verification code to your email. Add your phone below to receive it by text as well (optional).
-              </CardDescription>
             </CardHeader>
             <CardContent className="text-white">
               <form onSubmit={handleRegister} className="space-y-4">
@@ -122,9 +119,8 @@ export default function RegisterPage() {
                     <Input id="email" type="email" placeholder="your@email.com" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} required className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400" />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="phone" className="text-slate-300">Phone (optional)</Label>
-                    <Input id="phone" placeholder="e.g. 9876543210" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400" />
-                    <p className="text-xs text-slate-400">Optional. We&apos;ll send the code to your email; add your number to get it by text too.</p>
+                    <Label htmlFor="phone" className="text-slate-300">Phone *</Label>
+                    <Input id="phone" placeholder="e.g. 9876543210" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} required className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400" />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="city" className="text-slate-300">City</Label>
