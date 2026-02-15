@@ -29,7 +29,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [demoMode, setDemoMode] = useState(false)
   const [searchQ, setSearchQ] = useState('')
   const [searchResults, setSearchResults] = useState<{
     users: { id: string; name: string; email: string; href: string }[]
@@ -99,15 +98,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       }
       const data = await response.json()
       setUser(data.user)
-
-      // Demo banner (optional)
-      try {
-        const demoRes = await fetch('/api/demo/status')
-        if (demoRes.ok) {
-          const demo = await demoRes.json()
-          setDemoMode(Boolean(demo?.demoExists))
-        }
-      } catch {}
     } catch (error) {
       localStorage.removeItem('token')
       router.push('/login')
@@ -279,13 +269,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </DropdownMenu>
         </div>
 
-        {demoMode && (
-          <div className="px-4 pb-3">
-            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
-              <span className="font-semibold">DEMO MODE</span> — sample data is loaded. Files download securely via API (no public URLs).
-            </div>
-          </div>
-        )}
       </header>
 
       <div className="flex">

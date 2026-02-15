@@ -45,6 +45,7 @@ export default function SettingsPage() {
   const [logoutAllLoading, setLogoutAllLoading] = useState(false)
   const [adminSeedLoading, setAdminSeedLoading] = useState(false)
   const [adminClearLoading, setAdminClearLoading] = useState(false)
+  const [launchClearLoading, setLaunchClearLoading] = useState(false)
 
   const headers = authHeaders()
   const loadData = async () => {
@@ -259,10 +260,25 @@ export default function SettingsPage() {
       const res = await fetch('/api/admin/demo/clear', { method: 'POST', headers })
       if (!res.ok) throw new Error('Failed')
       toast.success('Demo data cleared')
-    } catch (e: any) {
-      toast.error(e.message || 'Failed to clear')
-    } finally {
       setAdminClearLoading(false)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed')
+      setAdminClearLoading(false)
+    }
+  }
+
+  const handleLaunchClear = async () => {
+    if (!confirm('Remove ALL projects, all training content/sessions, and all offers? This cannot be undone. Use this for official launch.')) return
+    setLaunchClearLoading(true)
+    try {
+      const res = await fetch('/api/admin/launch/clear-sample', { method: 'POST', headers })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Failed')
+      toast.success(data.message || 'All sample data cleared. App is ready for official launch.')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to clear')
+    } finally {
+      setLaunchClearLoading(false)
     }
   }
 
@@ -677,14 +693,18 @@ export default function SettingsPage() {
                 <CardDescription className="text-slate-400">Dev-only. Disabled in production.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex gap-4">
+                <div className="flex flex-wrap gap-4">
                   <Button onClick={handleAdminSeed} disabled={adminSeedLoading} variant="outline" className="border-slate-600 text-slate-300">
                     {adminSeedLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} Run Demo Seeder
                   </Button>
                   <Button onClick={handleAdminClear} disabled={adminClearLoading} variant="outline" className="border-red-900/50 text-red-300">
                     {adminClearLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} Clear Demo Data
                   </Button>
+                  <Button onClick={handleLaunchClear} disabled={launchClearLoading} variant="outline" className="border-emerald-700 text-emerald-300">
+                    {launchClearLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} Clear for official launch
+                  </Button>
                 </div>
+                <p className="text-xs text-slate-500">Clear for official launch: removes all projects, all training content/sessions, and all offers. Use once when going live.</p>
               </CardContent>
             </Card>
           </TabsContent>
