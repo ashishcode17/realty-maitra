@@ -20,11 +20,19 @@ Or double‑click **DEPLOY-LIVE.bat** (must be inside the **realty-collective** 
 
 Vercel → your project → **Settings** → **Environment Variables**.
 
-- **Email OTP:** SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM  
-- **SMS India (free):** FAST2SMS_API_KEY (from https://www.fast2sms.com/dashboard/dev-api)  
-- **Database:** DATABASE_URL, JWT_SECRET, NEXT_PUBLIC_APP_URL  
+- **Database:** `DATABASE_URL`, `JWT_SECRET`, `NEXT_PUBLIC_APP_URL`
+- **Email OTP:** `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`
+- **SMS (India):** `FAST2SMS_API_KEY` (from https://www.fast2sms.com/dashboard/dev-api)
+- **Create DEMO1234 on deploy (optional):**  
+  Set **once** for first deploy (or after clearing users):  
+  `ALLOW_SEED_ON_DEPLOY` = `true`  
+  `ALLOW_SEED_IN_PRODUCTION` = `true`  
+  After the first successful deploy you can set `ALLOW_SEED_ON_DEPLOY` to `false` so seed doesn’t run on every deploy.
 
-Then **Redeploy** (Deployments → ⋮ → Redeploy).
+**What happens when you deploy:**  
+The build runs `prisma migrate deploy` (applies DB migrations) and, if the two seed vars above are set, runs the seed so the sponsor code **DEMO1234** exists. You don’t need to run seed or migrations locally.
+
+Then **Redeploy** (Deployments → ⋮ → Redeploy) if you only changed env vars.
 
 ---
 

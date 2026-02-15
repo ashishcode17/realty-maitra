@@ -6,6 +6,7 @@ import { handleApiError } from '@/lib/error-handler'
 import { checkRateLimit, checkOtpSendRateLimit } from '@/lib/rateLimit'
 import { sendOTPEmail } from '@/lib/email'
 import { sendOTPSms } from '@/lib/sms'
+import { ensureDemoSponsorExists } from '@/lib/ensure-demo-sponsor'
 import { nanoid } from 'nanoid'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -64,16 +65,30 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const sponsor = await prisma.user.findFirst({
+    let sponsor: { id: string; path: string[] | null } | null = await prisma.user.findFirst({
       where: { sponsorCode: sponsorCodeStr, status: 'ACTIVE' },
-      select: { id: true, sponsorCode: true, path: true },
+      select: { id: true, path: true },
     })
+
+    // DEMO1234: ensure demo sponsor exists (so it works even if seed never ran)
+    if (!sponsor && sponsorCodeStr === 'DEMO1234') {
+      sponsor = await ensureDemoSponsorExists()
+    }
+    // First user: when DB has no ACTIVE sponsor, accept env FIRST_SPONSOR_CODE once
+    const firstCode = process.env.FIRST_SPONSOR_CODE?.trim().toUpperCase()
+    if (!sponsor && firstCode && sponsorCodeStr === firstCode) {
+      const count = await prisma.user.count({ where: { status: 'ACTIVE', sponsorCode: { not: null } } })
+      if (count === 0) sponsor = { id: '', path: [] }
+    }
+
     if (!sponsor) {
       return NextResponse.json(
         { error: 'Invalid sponsor code', code: 'INVALID_SPONSOR_CODE' },
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       )
     }
+
+    const isFirstUser = sponsor.id === ''
 
     await prisma.user.deleteMany({ where: { email: `pending_${emailStr}` } })
     await prisma.otpVerification.deleteMany({ where: { identifier: emailStr, purpose: 'REGISTER' } })
@@ -92,8 +107,8 @@ export async function POST(request: NextRequest) {
         passwordHash: hashPassword(passwordStr),
         role: 'BDM',
         roleRank: getRoleRank('BDM'),
-        sponsorId: sponsor.id,
-        path: [...(sponsor.path || []), sponsor.id],
+        sponsorId: isFirstUser ? null : sponsor.id,
+        path: isFirstUser ? [] : [...(sponsor.path || []), sponsor.id],
         status: 'PENDING_VERIFICATION',
         emailVerified: false,
         sponsorCode: pendingCode,
