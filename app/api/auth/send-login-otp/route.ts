@@ -4,6 +4,7 @@ import { generateOTP, hashOTP } from '@/lib/auth'
 import { handleApiError } from '@/lib/error-handler'
 import { checkOtpSendRateLimit } from '@/lib/rateLimit'
 import { sendOTPEmail } from '@/lib/email'
+import { sendOTPSms } from '@/lib/sms'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const OTP_EXPIRY_MS = 10 * 60 * 1000 // 10 minutes
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
 
     const user = await prisma.user.findUnique({
       where: { email: emailStr },
-      select: { id: true, status: true },
+      select: { id: true, status: true, phone: true },
     })
 
     if (!user) {
@@ -77,13 +78,28 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    const sent = await sendOTPEmail(emailStr, otp)
-    if (!sent && isDev) {
+    const phoneStr = user.phone?.trim() ?? ''
+    const [emailSent, smsSent] = await Promise.all([
+      sendOTPEmail(emailStr, otp),
+      phoneStr ? sendOTPSms(phoneStr, otp) : Promise.resolve(false),
+    ])
+    if (!emailSent && !smsSent && isDev) {
       console.log(`[Dev] Login OTP for ${emailStr}: ${otp}`)
     }
 
-    const res: { message: string; mockOTP?: string } = { message: 'OTP sent to your email' }
+    const channels: string[] = []
+    if (emailSent) channels.push('email')
+    if (smsSent) channels.push('phone')
+    const message =
+      channels.length === 2
+        ? 'OTP sent to your email and phone'
+        : channels.length === 1
+          ? `OTP sent to your ${channels[0]}`
+          : 'OTP sent. Check your inbox and messages.'
+
+    const res: { message: string; mockOTP?: string; sentTo?: string[] } = { message }
     if (isDev) res.mockOTP = otp
+    if (channels.length) res.sentTo = channels
 
     return NextResponse.json(res, { headers: { 'Content-Type': 'application/json' } })
   } catch (error: unknown) {

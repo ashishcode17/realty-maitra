@@ -5,6 +5,7 @@ import { getRoleRank } from '@/lib/roles'
 import { handleApiError } from '@/lib/error-handler'
 import { checkRateLimit, checkOtpSendRateLimit } from '@/lib/rateLimit'
 import { sendOTPEmail } from '@/lib/email'
+import { sendOTPSms } from '@/lib/sms'
 import { nanoid } from 'nanoid'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -114,14 +115,31 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    const sent = await sendOTPEmail(emailStr, otp)
-    if (!sent && isDev) {
-      console.log(`[Dev] OTP for ${emailStr}: ${otp}`)
+    const phoneStr = typeof phone === 'string' ? phone.trim() : ''
+    const [emailSent, smsSent] = await Promise.all([
+      sendOTPEmail(emailStr, otp),
+      phoneStr ? sendOTPSms(phoneStr, otp) : Promise.resolve(false),
+    ])
+    if (!emailSent && !smsSent && isDev) {
+      console.log(`[Dev] OTP for ${emailStr}${phoneStr ? ` / ${phoneStr}` : ''}: ${otp}`)
     }
 
-    const res: { message: string; email: string; mockOTP?: string } = {
-      message: 'OTP sent to your email',
+    const channels: string[] = []
+    if (emailSent) channels.push('email')
+    if (smsSent) channels.push('phone')
+    const message =
+      channels.length === 2
+        ? 'OTP sent to your email and phone'
+        : channels.length === 1
+          ? `OTP sent to your ${channels[0]}`
+          : process.env.SMTP_USER && process.env.SMTP_PASS
+            ? 'OTP could not be sent. Check email and phone, or try again.'
+            : 'OTP sent (check your inbox and messages). If you don’t receive it, contact support.'
+
+    const res: { message: string; email: string; mockOTP?: string; sentTo?: string[] } = {
+      message,
       email: emailStr,
+      sentTo: channels.length ? channels : undefined,
     }
     if (isDev) {
       res.mockOTP = otp
