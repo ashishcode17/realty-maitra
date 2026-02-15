@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Phone-only test: email OTP disabled until SMS is verified
+    // Phone-only: email OTP disabled until phone OTP is verified working
     const phoneStr = user.phone?.trim() ?? ''
     const smsSent = phoneStr ? await sendOTPSms(phoneStr, otp) : false
     if (!smsSent && isDev) {
