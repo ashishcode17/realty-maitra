@@ -575,7 +575,7 @@ export default function SettingsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <p className="text-slate-500 text-sm">These settings are enforced in API responses; other users will not see masked data.</p>
+              <p className="text-slate-500 text-sm">Your privacy choices apply across the platform.</p>
             </CardContent>
           </Card>
         </TabsContent>

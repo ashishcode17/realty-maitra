@@ -12,8 +12,6 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { toast } from 'sonner';
 
-const hideDemo = process.env.NEXT_PUBLIC_HIDE_DEMO === 'true';
-
 function getRegisterError(data: { error?: string; message?: string; code?: string }): string {
   switch (data.code) {
     case 'RATE_LIMIT':
@@ -63,7 +61,7 @@ export default function RegisterPage() {
       }
       setMockOTP(data.mockOTP ?? '');
       toast.success(data.message || 'OTP sent');
-      if (data.smsFailed) toast.info('SMS could not be sent. Use the OTP from your email.');
+      if (data.smsFailed) toast.info('Check your email for the code.');
       setStep(2);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Registration failed');
@@ -97,11 +95,11 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4 sm:p-6">
       <div className="w-full max-w-2xl">
-        <div className="text-center mb-8">
+        <div className="text-center mb-6 sm:mb-8">
           <BrandLogo href="/" size="lg" variant="light" className="mb-4 justify-center" />
-          <p className="text-slate-300 font-medium">Create your account and join the network</p>
+          <p className="text-slate-300 font-medium text-sm sm:text-base">Create your account and join the network</p>
         </div>
 
         {step === 1 ? (
@@ -109,7 +107,7 @@ export default function RegisterPage() {
             <CardHeader>
               <CardTitle className="text-white text-xl">Join {brand.appName}</CardTitle>
               <CardDescription className="text-slate-300">
-                We&apos;ll send an OTP to your email (and phone if you add one and have SMS set up).
+                We&apos;ll send a verification code to your email. Add your phone below to receive it by text as well (optional).
               </CardDescription>
             </CardHeader>
             <CardContent className="text-white">
@@ -125,8 +123,8 @@ export default function RegisterPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="phone" className="text-slate-300">Phone (optional)</Label>
-                    <Input id="phone" placeholder="Leave blank – OTP will go to email only" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400" />
-                    <p className="text-xs text-slate-400">OTP is sent to your email. Add phone only if you have SMS configured.</p>
+                    <Input id="phone" placeholder="e.g. 9876543210" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400" />
+                    <p className="text-xs text-slate-400">Optional. We&apos;ll send the code to your email; add your number to get it by text too.</p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="city" className="text-slate-300">City</Label>
@@ -146,19 +144,13 @@ export default function RegisterPage() {
                   <Label htmlFor="sponsorCode" className="text-slate-300">Sponsor / Invite Code *</Label>
                   <Input id="sponsorCode" placeholder="Enter invite code" value={formData.sponsorCode} onChange={(e) => setFormData({ ...formData, sponsorCode: e.target.value.trim().toUpperCase() })} required className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400" />
                 </div>
-                <Button type="submit" disabled={loading} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">
+                <Button type="submit" disabled={loading} className="w-full min-h-[44px] bg-emerald-600 hover:bg-emerald-700 text-white">
                   {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending OTP...</> : 'Send OTP'}
                 </Button>
               </form>
               <div className="mt-6 text-center text-sm">
                 <p className="text-slate-300">Already have an account? <Link href="/login" className="text-emerald-400 hover:text-emerald-300 font-medium underline">Sign in</Link></p>
               </div>
-              {!hideDemo && (
-                <div className="mt-6 p-4 bg-emerald-900/20 rounded-lg border border-emerald-800">
-                  <p className="text-xs text-emerald-300 mb-1 font-semibold">Demo invite code:</p>
-                  <p className="text-sm text-emerald-400 font-mono">DEMO1234</p>
-                </div>
-              )}
             </CardContent>
           </Card>
         ) : (
@@ -179,9 +171,9 @@ export default function RegisterPage() {
                   <Label htmlFor="otp" className="text-slate-300">Enter OTP</Label>
                   <Input id="otp" type="text" inputMode="numeric" placeholder="123456" value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} maxLength={6} required className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 text-2xl text-center tracking-widest" />
                 </div>
-                <div className="flex space-x-3">
-                  <Button type="button" variant="outline" onClick={() => setStep(1)} className="flex-1 border-slate-700 text-white hover:bg-slate-800">Back</Button>
-                  <Button type="submit" disabled={loading || otp.length !== 6} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white">
+                <div className="flex flex-col-reverse sm:flex-row gap-3 sm:gap-3">
+                  <Button type="button" variant="outline" onClick={() => setStep(1)} className="flex-1 min-h-[44px] border-2 border-slate-500 bg-slate-700/60 text-slate-100 hover:bg-slate-600 hover:border-slate-400 hover:text-white">Back</Button>
+                  <Button type="submit" disabled={loading || otp.length !== 6} className="flex-1 min-h-[44px] bg-emerald-600 hover:bg-emerald-700 text-white">
                     {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying...</> : <><CheckCircle2 className="mr-2 h-4 w-4" /> Verify & Complete</>}
                   </Button>
                 </div>
@@ -191,7 +183,7 @@ export default function RegisterPage() {
         )}
 
         <div className="mt-6 text-center">
-          <Link href="/" className="text-sm text-slate-300 hover:text-white transition font-medium">← Back to home</Link>
+          <Link href="/" className="inline-block py-3 px-4 text-sm text-slate-300 hover:text-white transition font-medium min-h-[44px] flex items-center justify-center">← Back to home</Link>
         </div>
       </div>
     </div>

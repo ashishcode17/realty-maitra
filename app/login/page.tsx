@@ -17,7 +17,7 @@ function getLoginErrorMessage(data: { error?: string; code?: string; message?: s
   const code = data.code;
   if (code === 'RATE_LIMIT') return 'Too many attempts. Please try again later.';
   if (code === 'DATABASE_CONNECTION_ERROR' || code === 'DATABASE_QUERY_ERROR') {
-    return "Can't reach database. If you use Neon: resume the database in console.neon.tech, then try again.";
+    return 'Something went wrong. Please try again in a moment.';
   }
   return data.message || data.error || 'Login failed.';
 }
@@ -88,7 +88,7 @@ export default function LoginPage() {
       setOtp('');
       if (data.mockOTP) setMockOtp(data.mockOTP);
       toast.success(data.message || 'OTP sent');
-      if (data.smsFailed) toast.info('SMS could not be sent. Use the OTP from your email.');
+      if (data.smsFailed) toast.info('Check your email for the code.');
     } catch {
       toast.error('Failed to send OTP');
     } finally {
@@ -133,7 +133,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4 sm:p-6">
       <div className="w-full max-w-md">
         <div className="text-center mb-6">
           <Link href="/">
@@ -180,7 +180,7 @@ export default function LoginPage() {
                     </button>
                   </div>
                 </div>
-                <Button type="submit" disabled={loading} className="w-full bg-emerald-600 hover:bg-emerald-700">
+                <Button type="submit" disabled={loading} className="w-full min-h-[44px] bg-emerald-600 hover:bg-emerald-700 text-white">
                   {loading ? 'Signing in...' : 'Sign in'}
                 </Button>
               </form>
@@ -192,20 +192,20 @@ export default function LoginPage() {
                       <Label htmlFor="email-otp" className="text-slate-300">Email</Label>
                       <Input id="email-otp" type="email" placeholder="you@example.com" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} required className="bg-slate-700 border-slate-600 text-white" />
                     </div>
-                    <Button type="submit" disabled={loading} className="w-full bg-emerald-600 hover:bg-emerald-700">Send OTP</Button>
+                    <Button type="submit" disabled={loading} className="w-full min-h-[44px] bg-emerald-600 hover:bg-emerald-700 text-white">Send OTP</Button>
                   </form>
                 ) : (
                   <form onSubmit={handleVerifyOtp} className="space-y-4">
                     {mockOtp && (
-                      <div className="p-3 bg-emerald-900/20 rounded border border-emerald-800 text-sm text-emerald-300 font-mono">Dev OTP: {mockOtp}</div>
+                      <div className="p-3 bg-emerald-900/20 rounded border border-emerald-800 text-sm text-emerald-300 font-mono" aria-hidden="true">Code: {mockOtp}</div>
                     )}
                     <div className="space-y-2">
                       <Label htmlFor="otp" className="text-slate-300">Enter 6-digit OTP</Label>
                       <Input id="otp" type="text" inputMode="numeric" placeholder="123456" value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} maxLength={6} required className="bg-slate-700 border-slate-600 text-white text-center text-xl tracking-widest" />
                     </div>
-                    <div className="flex gap-2">
-                      <Button type="button" variant="outline" onClick={() => setOtpSent(false)} className="flex-1 border-slate-600 text-slate-300">Back</Button>
-                      <Button type="submit" disabled={loading || otp.length !== 6} className="flex-1 bg-emerald-600 hover:bg-emerald-700">Verify</Button>
+                    <div className="flex flex-col-reverse sm:flex-row gap-3">
+                      <Button type="button" variant="outline" onClick={() => setOtpSent(false)} className="flex-1 min-h-[44px] border-2 border-slate-500 bg-slate-700/60 text-slate-100 hover:bg-slate-600 hover:border-slate-400 hover:text-white">Back</Button>
+                      <Button type="submit" disabled={loading || otp.length !== 6} className="flex-1 min-h-[44px] bg-emerald-600 hover:bg-emerald-700 text-white">Verify</Button>
                     </div>
                   </form>
                 )}
