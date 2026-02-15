@@ -37,7 +37,7 @@ export async function resolveSponsorFromInviteCode(
   const code = normalizeInviteCode(inviteCode)
   if (!code) return null
 
-  let sponsor: { id: string; path: string[] | null; sponsorCode: string; name: string } | null =
+  let sponsor: { id: string; path: string[] | null; sponsorCode: string | null; name: string } | null =
     await prisma.user.findFirst({
       where: { sponsorCode: code, status: 'ACTIVE' },
       select: { id: true, path: true, sponsorCode: true, name: true },
