@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { hashPassword, generateSponsorCode } from '@/lib/auth'
+import { hashPassword, generateOTP, hashOTP, generateSponsorCode } from '@/lib/auth'
 import { getRoleRank } from '@/lib/roles'
 import { handleApiError } from '@/lib/error-handler'
-import { checkRateLimit } from '@/lib/rateLimit'
-import { verifyFirebaseIdToken } from '@/lib/firebase-admin'
-import { createAuditLog, getClientIp } from '@/lib/audit'
-import { sendWelcomeEmail } from '@/lib/email'
+import { checkRateLimit, checkOtpSendRateLimit } from '@/lib/rateLimit'
+import { sendOTPEmail } from '@/lib/email'
+import { sendOTPSms } from '@/lib/sms'
+import { nanoid } from 'nanoid'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MIN_PASSWORD_LENGTH = 8
-
+const OTP_EXPIRY_MS = 10 * 60 * 1000
+const isDev = process.env.NODE_ENV !== 'production'
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,21 +22,21 @@ export async function POST(request: NextRequest) {
         { status: 429, headers: { 'Content-Type': 'application/json', 'Retry-After': String(rate.retryAfter) } }
       )
     }
+    const otpRate = checkOtpSendRateLimit(request)
+    if (!otpRate.ok) {
+      return NextResponse.json(
+        { error: 'Too many OTP requests', message: 'Please try again later', code: 'RATE_LIMIT', retryAfter: otpRate.retryAfter },
+        { status: 429, headers: { 'Content-Type': 'application/json', 'Retry-After': String(otpRate.retryAfter) } }
+      )
+    }
 
     const body = await request.json().catch(() => ({}))
-    const { name, email, phone, city, password, sponsorCode, firebaseIdToken } = body
+    const { name, email, phone, city, password, sponsorCode } = body
     const nameStr = typeof name === 'string' ? name.trim() : ''
     const emailStr = typeof email === 'string' ? email.trim().toLowerCase() : ''
     const passwordStr = typeof password === 'string' ? password : ''
     const sponsorCodeStr = typeof sponsorCode === 'string' ? sponsorCode.trim().toUpperCase() : ''
-    const idToken = typeof firebaseIdToken === 'string' ? firebaseIdToken.trim() : ''
 
-    if (!idToken) {
-      return NextResponse.json(
-        { error: 'Phone verification required', message: 'Complete phone OTP verification first', code: 'MISSING_FIREBASE_TOKEN' },
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      )
-    }
     if (!nameStr || !emailStr || !passwordStr || !sponsorCodeStr) {
       return NextResponse.json(
         { error: 'All fields are required', code: 'MISSING_FIELDS' },
@@ -54,15 +55,6 @@ export async function POST(request: NextRequest) {
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       )
     }
-
-    const decoded = await verifyFirebaseIdToken(idToken)
-    if (!decoded) {
-      return NextResponse.json(
-        { error: 'Invalid or expired phone verification', message: 'Please verify your phone again', code: 'INVALID_FIREBASE_TOKEN' },
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      )
-    }
-    const phoneToStore = decoded.phone_number || (typeof phone === 'string' ? phone.trim() || null : null)
 
     const existingUser = await prisma.user.findUnique({ where: { email: emailStr } })
     if (existingUser) {
@@ -83,55 +75,70 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const newUser = await prisma.user.create({
+    await prisma.user.deleteMany({ where: { email: `pending_${emailStr}` } })
+    await prisma.otpVerification.deleteMany({ where: { identifier: emailStr, purpose: 'REGISTER' } })
+
+    const otp = generateOTP()
+    const otpHash = hashOTP(otp)
+    const expiresAt = new Date(Date.now() + OTP_EXPIRY_MS)
+    const pendingCode = `PEND_${nanoid(6).toUpperCase()}`
+
+    const pendingUser = await prisma.user.create({
       data: {
         name: nameStr,
-        email: emailStr,
-        phone: phoneToStore,
+        email: `pending_${emailStr}`,
+        phone: typeof phone === 'string' ? phone.trim() || null : null,
         city: typeof city === 'string' ? city.trim() || null : null,
         passwordHash: hashPassword(passwordStr),
         role: 'BDM',
         roleRank: getRoleRank('BDM'),
         sponsorId: sponsor.id,
         path: [...(sponsor.path || []), sponsor.id],
-        sponsorCode: generateSponsorCode(),
-        sponsorCodeUsed: sponsorCodeStr,
-        status: 'ACTIVE',
-        emailVerified: true,
-        emailVerifiedAt: new Date(),
-        phoneVerified: true,
-        phoneVerifiedAt: new Date(),
+        status: 'PENDING_VERIFICATION',
+        emailVerified: false,
+        sponsorCode: pendingCode,
       },
     })
 
-    createAuditLog({
-      actorUserId: newUser.id,
-      action: 'USER_CREATED',
-      entityType: 'User',
-      entityId: newUser.id,
-      metaJson: { sponsorId: newUser.sponsorId, sponsorCodeUsed: sponsorCodeStr },
-      ip: getClientIp(request),
-    }).catch(() => {})
-
-    sendWelcomeEmail(emailStr, newUser.name).catch(() => {})
-
-    const { generateToken } = await import('@/lib/auth')
-    const token = generateToken(newUser.id, newUser.role, (newUser as { tokenVersion?: number }).tokenVersion ?? 0)
-
-    return NextResponse.json(
-      {
-        message: 'Registration successful',
-        token,
-        user: {
-          id: newUser.id,
-          name: newUser.name,
-          email: newUser.email,
-          role: newUser.role,
-          sponsorCode: newUser.sponsorCode ?? '',
-        },
+    await prisma.otpVerification.create({
+      data: {
+        identifier: emailStr,
+        otpHash,
+        purpose: 'REGISTER',
+        meta: JSON.stringify({ pendingUserId: pendingUser.id }),
+        expiresAt,
       },
-      { headers: { 'Content-Type': 'application/json' } }
-    )
+    })
+
+    const phoneStr = typeof phone === 'string' ? phone.trim() : ''
+    const [emailSent, smsSent] = await Promise.all([
+      sendOTPEmail(emailStr, otp),
+      phoneStr ? sendOTPSms(phoneStr, otp) : Promise.resolve(false),
+    ])
+    if (!emailSent && !smsSent && isDev) {
+      console.log(`[Dev] OTP for ${emailStr}${phoneStr ? ` / ${phoneStr}` : ''}: ${otp}`)
+    }
+
+    const channels: string[] = []
+    if (emailSent) channels.push('email')
+    if (smsSent) channels.push('phone')
+    const message =
+      channels.length === 2
+        ? 'OTP sent to your email and phone'
+        : channels.length === 1
+          ? `OTP sent to your ${channels[0]}`
+          : phoneStr || process.env.SMTP_USER
+            ? 'OTP could not be sent. Check number and email, or try again.'
+            : 'OTP sent. Check your inbox and messages.'
+
+    const res: { message: string; email: string; mockOTP?: string; sentTo?: string[] } = {
+      message,
+      email: emailStr,
+      sentTo: channels.length ? channels : undefined,
+    }
+    if (isDev) res.mockOTP = otp
+
+    return NextResponse.json(res, { headers: { 'Content-Type': 'application/json' } })
   } catch (error: unknown) {
     return handleApiError(error, 'Register')
   }

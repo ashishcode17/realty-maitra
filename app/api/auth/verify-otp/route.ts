@@ -113,6 +113,8 @@ export async function POST(request: NextRequest) {
         status: 'ACTIVE',
         emailVerified: true,
         emailVerifiedAt: new Date(),
+        phoneVerified: true,
+        phoneVerifiedAt: new Date(),
       },
     })
 

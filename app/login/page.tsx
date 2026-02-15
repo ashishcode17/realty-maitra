@@ -1,17 +1,15 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, Mail, KeyRound } from 'lucide-react';
 import Link from 'next/link';
-import { getAuth, signInWithPhoneNumber, RecaptchaVerifier, type ConfirmationResult } from 'firebase/auth';
 import { BrandLogo } from '@/components/BrandLogo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { getFirebaseApp } from '@/lib/firebase-client';
 
 const hideDemo = process.env.NEXT_PUBLIC_HIDE_DEMO === 'true';
 
@@ -32,10 +30,9 @@ export default function LoginPage() {
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
+  const [mockOtp, setMockOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const confirmationResultRef = useRef<ConfirmationResult | null>(null);
-  const recaptchaContainerRef = useRef<HTMLDivElement>(null);
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,7 +70,7 @@ export default function LoginPage() {
     }
     setLoading(true);
     try {
-      const res = await fetch('/api/auth/get-login-phone', {
+      const res = await fetch('/api/auth/send-login-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
@@ -82,30 +79,19 @@ export default function LoginPage() {
       if (!res.ok) {
         const msg =
           data.code === 'RATE_LIMIT'
-            ? 'Too many attempts. Please try again later.'
+            ? 'Too many OTP requests. Please try again later.'
             : data.code === 'USER_NOT_FOUND'
               ? 'No account found with this email.'
-              : data.code === 'NO_PHONE'
-                ? 'No phone on file for this account.'
-                : data.error || data.message || 'Failed to get phone';
+              : data.error || data.message || 'Failed to send OTP';
         toast.error(msg);
         return;
       }
-      const phone = data.phone as string;
-      const app = getFirebaseApp();
-      if (!app || !recaptchaContainerRef.current) {
-        toast.error('Firebase is not configured or recaptcha missing.');
-        return;
-      }
-      const auth = getAuth(app);
-      const recaptchaVerifier = new RecaptchaVerifier(auth, recaptchaContainerRef.current, { size: 'invisible', callback: () => {} });
-      const confirmation = await signInWithPhoneNumber(auth, phone, recaptchaVerifier);
-      confirmationResultRef.current = confirmation;
       setOtpSent(true);
       setOtp('');
-      toast.success('OTP sent to your phone');
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to send OTP');
+      if (data.mockOTP) setMockOtp(data.mockOTP);
+      toast.success(data.message || 'OTP sent');
+    } catch {
+      toast.error('Failed to send OTP');
     } finally {
       setLoading(false);
     }
@@ -118,29 +104,22 @@ export default function LoginPage() {
       toast.error('Enter the 6-digit OTP');
       return;
     }
-    const confirmation = confirmationResultRef.current;
-    if (!confirmation) {
-      toast.error('Session expired. Go back and send OTP again.');
-      return;
-    }
     setLoading(true);
     try {
-      const result = await confirmation.confirm(otp);
-      const idToken = await result.user.getIdToken();
       const response = await fetch('/api/auth/verify-login-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, firebaseIdToken: idToken }),
+        body: JSON.stringify({ email, otp }),
       });
       const data = await response.json();
       if (!response.ok) {
         const msg =
           data.code === 'RATE_LIMIT'
             ? 'Too many attempts. Please try again later.'
-            : data.code === 'INVALID_FIREBASE_TOKEN'
-              ? 'Invalid or expired verification. Try again.'
-              : data.code === 'PHONE_MISMATCH'
-                ? 'Phone does not match this account.'
+            : data.code === 'OTP_EXPIRED'
+              ? 'OTP expired. Request a new one.'
+              : data.code === 'INVALID_OTP'
+                ? 'Invalid OTP. Check and try again.'
                 : data.error || data.message || 'Verification failed';
         toast.error(msg);
         return;
@@ -231,7 +210,6 @@ export default function LoginPage() {
               </form>
             ) : (
               <>
-                <div id="login-recaptcha" ref={recaptchaContainerRef} className="hidden" />
                 {!otpSent ? (
                   <form onSubmit={handleSendOtp} className="space-y-4">
                     <div className="space-y-2">
@@ -247,11 +225,17 @@ export default function LoginPage() {
                       />
                     </div>
                     <Button type="submit" disabled={loading} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">
-                      {loading ? 'Sending...' : 'Send OTP to phone'}
+                      {loading ? 'Sending...' : 'Send OTP'}
                     </Button>
                   </form>
                 ) : (
                   <form onSubmit={handleVerifyOtp} className="space-y-4">
+                    {mockOtp && (
+                      <div className="p-3 bg-slate-700/80 rounded-lg border border-slate-600">
+                        <p className="text-xs text-slate-400 mb-1">Dev OTP:</p>
+                        <p className="text-lg font-mono text-emerald-400">{mockOtp}</p>
+                      </div>
+                    )}
                     <div className="space-y-2">
                       <Label htmlFor="otp" className="text-slate-200 font-medium">Enter 6-digit OTP</Label>
                       <Input
