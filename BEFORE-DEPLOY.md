@@ -12,7 +12,14 @@ Vercel builds from GitHub. If you don’t push, it deploys old code.
 4. Click **Commit** (✓)
 5. **⋯** menu → **Push**
 
-Or double‑click **DEPLOY-LIVE.bat** (must be inside the **realty-collective** folder).
+Or double‑click **DEPLOY-LIVE.bat** — and make sure that file is inside **realty-collective**, not realty-collective-COMPLETE.
+
+### Why don't I see my changes on the live site?
+
+- **Two folders:** Edits were made in **realty-collective**. If your live site is built from **realty-collective-COMPLETE** (or another repo), it will never show those changes.
+- **Do this:** Run **DEPLOY-LIVE.bat** from inside the **realty-collective** folder (File Explorer → `realty-collective` → double‑click the bat file). Don't run it from realty-collective-COMPLETE.
+- **Vercel:** Settings → Git → check which repository is connected. It must be the repo you push from when you're in realty-collective.
+- **Cache:** After deploy, do a hard refresh on the site (Ctrl+Shift+R) to avoid old cached files.
 
 ---
 
