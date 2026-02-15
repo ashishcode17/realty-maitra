@@ -1,5 +1,19 @@
 # Before you redeploy (read this)
 
+## 0. Empty the app for official launch (one-time)
+
+To remove **all** projects, **all** training, and **all** offers so you can add real data:
+
+1. Open the **realty-collective** folder in Cursor.
+2. In `.env` set `DATABASE_URL` to your **production** database (copy from Vercel → Project → Settings → Environment Variables, or use your Neon connection string).
+3. In the terminal (from realty-collective):  
+   `npm run clear:launch`  
+4. When it finishes, Projects, Training, and Offers will be empty. Refresh the app and start adding real data.
+
+**If you run this against your live DB, it clears everything immediately.** Back up first if needed.
+
+---
+
 ## 1. Push code to GitHub first
 
 Vercel builds from GitHub. If you don’t push, it deploys old code.
