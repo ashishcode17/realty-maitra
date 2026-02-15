@@ -13,15 +13,23 @@ const transporter = nodemailer.createTransport({
   },
 })
 
-export async function sendOTPEmail(email: string, otp: string) {
+/**
+ * Send OTP to the USER's email (the address they typed in the form).
+ * SMTP_USER/SMTP_FROM are only the SENDER – the recipient is always the user's email.
+ */
+export async function sendOTPEmail(userEmail: string, otp: string) {
+  if (!userEmail?.includes('@')) {
+    console.error('[Email] Invalid recipient:', userEmail)
+    return false
+  }
   const mailOptions = {
     from: process.env.SMTP_FROM || brand.emailFrom,
-    to: email,
+    to: userEmail,
     subject: `${brand.appName} - Email Verification OTP`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #1a1a1a;">Email Verification</h2>
-        <p>Your OTP for email verification is:</p>
+        <p>Your OTP for ${brand.appName} is:</p>
         <div style="background: #f5f5f5; padding: 20px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 5px; margin: 20px 0;">
           ${otp}
         </div>

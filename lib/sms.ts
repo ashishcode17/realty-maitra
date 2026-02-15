@@ -36,16 +36,27 @@ function isIndianNumber(phone: string): boolean {
  * Get API key: https://www.fast2sms.com/dashboard/dev-api
  */
 async function sendViaFast2SMS(phone: string, otp: string): Promise<boolean> {
-  const apiKey = process.env.FAST2SMS_API_KEY
-  if (!apiKey) return false
+  const apiKey = process.env.FAST2SMS_API_KEY?.trim()
+  if (!apiKey) {
+    if (process.env.NODE_ENV === 'production') {
+      console.warn('[SMS] Fast2SMS: FAST2SMS_API_KEY not set in Vercel env')
+    }
+    return false
+  }
 
   const numbers = normalizeIndianNumber(phone)
   if (!numbers || numbers.length !== 10) {
-    console.warn('[SMS] Fast2SMS: invalid Indian number:', phone)
+    console.warn('[SMS] Fast2SMS: invalid Indian number (need 10 digits):', phone?.replace(/\d/g, 'X'))
     return false
   }
 
   const url = 'https://www.fast2sms.com/dev/bulkV2'
+  const body = {
+    route: 'otp',
+    variables_values: String(otp),
+    numbers: numbers,
+    flash: 0,
+  }
   try {
     const res = await fetch(url, {
       method: 'POST',
@@ -53,20 +64,23 @@ async function sendViaFast2SMS(phone: string, otp: string): Promise<boolean> {
         authorization: apiKey,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        route: 'otp',
-        variables_values: otp,
-        numbers: numbers,
-        flash: 0,
-      }),
+      body: JSON.stringify(body),
     })
-    const data = await res.json().catch(() => ({}))
+    const text = await res.text()
+    const data = (() => {
+      try {
+        return JSON.parse(text)
+      } catch {
+        return {}
+      }
+    })()
+
     if (!res.ok) {
-      console.error('[SMS] Fast2SMS error:', res.status, data)
+      console.error('[SMS] Fast2SMS HTTP', res.status, text?.slice(0, 200))
       return false
     }
-    if (data.return === false) {
-      console.error('[SMS] Fast2SMS API returned false:', data)
+    if (data.return === false || (data.message && String(data.message).toLowerCase().includes('error'))) {
+      console.error('[SMS] Fast2SMS API error:', data.message ?? data)
       return false
     }
     return true

@@ -32,6 +32,13 @@ Set in Vercel → Settings → Environment Variables:
 
 No phone number to buy – only the API key. Indian users can enter 10-digit mobile; the app sends the same OTP to email and SMS.
 
+### Phone OTP not working?
+
+1. **Vercel env:** In Vercel → Project → **Settings** → **Environment Variables**, ensure `FAST2SMS_API_KEY` is set for **Production** (and **Preview** if you test preview URLs). No quotes; paste the key as-is.
+2. **Redeploy:** After adding or changing the variable, trigger a new deploy (Deployments → ⋮ → Redeploy).
+3. **Logs:** In Vercel → **Deployments** → open the latest deployment → **Functions** or **Logs**. Try sending OTP again and look for `[SMS]` lines. You’ll see either “Fast2SMS API error: …” or “FAST2SMS_API_KEY not set” — that tells you what’s wrong (no OTP is ever logged).
+4. **Number:** Use a 10-digit Indian mobile (e.g. 9876543210). With or without +91 / 0 is fine.
+
 ---
 
 ## 3. SMS – International (optional, Twilio)
