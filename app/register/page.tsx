@@ -63,6 +63,7 @@ export default function RegisterPage() {
       }
       setMockOTP(data.mockOTP ?? '');
       toast.success(data.message || 'OTP sent');
+      if (data.smsFailed) toast.info('SMS could not be sent. Use the OTP from your email.');
       setStep(2);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Registration failed');

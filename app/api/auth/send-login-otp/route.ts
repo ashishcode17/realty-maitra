@@ -97,7 +97,8 @@ export async function POST(request: NextRequest) {
           ? `OTP sent to your ${channels[0]}`
           : 'OTP sent. Check your inbox and messages.'
 
-    const res: { message: string; mockOTP?: string; sentTo?: string[] } = { message }
+    const res: { message: string; mockOTP?: string; sentTo?: string[]; smsFailed?: boolean } = { message }
+    if (phoneStr && !smsSent) res.smsFailed = true
     if (isDev) res.mockOTP = otp
     if (channels.length) res.sentTo = channels
 

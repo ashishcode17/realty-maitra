@@ -90,6 +90,7 @@ export default function LoginPage() {
       setOtp('');
       if (data.mockOTP) setMockOtp(data.mockOTP);
       toast.success(data.message || 'OTP sent');
+      if (data.smsFailed) toast.info('SMS could not be sent. Use the OTP from your email.');
     } catch {
       toast.error('Failed to send OTP');
     } finally {

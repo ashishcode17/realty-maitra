@@ -16,7 +16,11 @@ Set in Vercel → Settings → Environment Variables:
 
 ---
 
-## 2. SMS – India (Fast2SMS)
+## 2. SMS – India (choose one or more)
+
+The app tries **Fast2SMS** first, then **2Factor.in**, then **Twilio**. Set the one you want to use.
+
+### Option A: Fast2SMS
 
 **Fast2SMS** is India-based. You do **not** add “numbers” anywhere – the API sends to whatever 10-digit Indian number the user enters. You only need the **API key** and (for the free OTP route) **wallet balance**.
 
@@ -47,6 +51,21 @@ You do **not** need to add or register any phone numbers on Fast2SMS. The app se
    - **Value:** `true`
    Then redeploy. Each OTP will cost ₹5 from your Fast2SMS wallet.
 
+### Option B: 2Factor.in (often more reliable in India)
+
+If Fast2SMS doesn’t work (DLT, balance, etc.), use **2Factor.in**:
+
+1. Sign up at **https://2factor.in**
+2. Get your **API key** from the dashboard.
+3. In Vercel → Environment Variables, add:
+   - **Name:** `TWO_FACTOR_API_KEY`
+   - **Value:** (your 2Factor API key)
+4. Redeploy.
+
+2Factor is paid (e.g. ₹0.30/SMS) but usually works without DLT hassles. The app will try Fast2SMS first; if it fails, it will try 2Factor automatically.
+
+### Option C: Twilio (works for India and international)
+
 ---
 
 ## 3. SMS – International (optional, Twilio)
@@ -57,7 +76,7 @@ If you need OTP for **non-Indian** numbers (e.g. US, UK), use **Twilio** and set
 - `TWILIO_AUTH_TOKEN`
 - `TWILIO_PHONE_NUMBER`
 
-Indian numbers use Fast2SMS first; Twilio is only needed for international.
+Indian numbers: app tries Fast2SMS → 2Factor.in → Twilio. Set any one (or more) in Vercel.
 
 ---
 

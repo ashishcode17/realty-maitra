@@ -93,6 +93,43 @@ async function sendViaFast2SMS(phone: string, otp: string): Promise<boolean> {
 }
 
 /**
+ * 2Factor.in – India OTP. Simple API, paid (e.g. ₹0.30/SMS). Set TWO_FACTOR_API_KEY in Vercel.
+ * Docs: https://2factor.in/API/DOCS/SMS_OTP.html
+ */
+async function sendVia2Factor(phone: string, otp: string): Promise<boolean> {
+  const apiKey = process.env.TWO_FACTOR_API_KEY?.trim()
+  if (!apiKey) return false
+
+  const num = normalizeIndianNumber(phone)
+  if (!num || num.length !== 10) return false
+
+  const url = `https://2factor.in/API/V1/${apiKey}/SMS/${num}/${otp}`
+  try {
+    const res = await fetch(url, { method: 'POST' })
+    const text = await res.text()
+    if (!res.ok) {
+      console.error('[SMS] 2Factor HTTP', res.status, text?.slice(0, 200))
+      return false
+    }
+    const data = (() => {
+      try {
+        return JSON.parse(text)
+      } catch {
+        return {}
+      }
+    })()
+    if (data.Status !== 'Success' && data.Status !== 'success') {
+      console.error('[SMS] 2Factor API:', JSON.stringify(data))
+      return false
+    }
+    return true
+  } catch (e) {
+    console.error('[SMS] 2Factor failed:', e)
+    return false
+  }
+}
+
+/**
  * Twilio – international (and India). Optional.
  */
 async function sendViaTwilio(phone: string, otp: string): Promise<boolean> {
@@ -133,17 +170,17 @@ async function sendViaTwilio(phone: string, otp: string): Promise<boolean> {
 }
 
 /**
- * Send OTP by SMS. Uses Fast2SMS for Indian numbers (free), Twilio for international if set.
+ * Send OTP by SMS.
+ * Indian numbers: tries Fast2SMS → 2Factor.in → Twilio (use whichever you set in Vercel).
+ * Others: Twilio only.
  */
 export async function sendOTPSms(phone: string, otp: string): Promise<boolean> {
   if (isIndianNumber(phone)) {
-    const ok = await sendViaFast2SMS(phone, otp)
-    if (ok) return true
-    // Fallback to Twilio for Indian if Fast2SMS failed and Twilio is set
+    if (await sendViaFast2SMS(phone, otp)) return true
+    if (await sendVia2Factor(phone, otp)) return true
   }
 
-  const ok = await sendViaTwilio(phone, otp)
-  if (ok) return true
+  if (await sendViaTwilio(phone, otp)) return true
 
   if (process.env.NODE_ENV !== 'production') {
     console.log('[SMS] No provider configured or send failed. OTP would be:', otp)

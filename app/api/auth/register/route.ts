@@ -146,11 +146,12 @@ export async function POST(request: NextRequest) {
             ? 'OTP could not be sent. Check number and email, or try again.'
             : 'OTP sent. Check your inbox and messages.'
 
-    const res: { message: string; email: string; mockOTP?: string; sentTo?: string[] } = {
+    const res: { message: string; email: string; mockOTP?: string; sentTo?: string[]; smsFailed?: boolean } = {
       message,
       email: emailStr,
       sentTo: channels.length ? channels : undefined,
     }
+    if (phoneStr && !smsSent) res.smsFailed = true
     if (isDev) res.mockOTP = otp
 
     return NextResponse.json(res, { headers: { 'Content-Type': 'application/json' } })
