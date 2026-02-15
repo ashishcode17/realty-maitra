@@ -41,8 +41,13 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const isProduction = process.env.NODE_ENV === 'production'
     const children = await prisma.user.findMany({
-      where: { sponsorId: userId, status: 'ACTIVE' },
+      where: {
+        sponsorId: userId,
+        status: 'ACTIVE',
+        ...(isProduction ? { isDemo: false } : {}),
+      },
       select: {
         id: true,
         name: true,

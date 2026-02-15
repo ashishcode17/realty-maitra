@@ -8,6 +8,13 @@ if (!process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL environment variable is required. Make sure .env file exists and contains DATABASE_URL.')
 }
 
+// Safety: do not run seed in production unless explicitly allowed (e.g. first-time setup)
+if (process.env.NODE_ENV === 'production' && process.env.ALLOW_SEED_IN_PRODUCTION !== 'true') {
+  throw new Error(
+    'Seeding is disabled in production. Set ALLOW_SEED_IN_PRODUCTION=true only for initial setup, then remove it.'
+  )
+}
+
 const prisma = new PrismaClient()
 
 async function main() {

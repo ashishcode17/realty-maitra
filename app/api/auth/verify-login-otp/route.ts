@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { compareOTP, generateToken, generateSponsorCode } from '@/lib/auth'
-import { getRoleRank } from '@/lib/roles'
+import { compareOTP, generateToken } from '@/lib/auth'
 import { handleApiError } from '@/lib/error-handler'
 import { checkOtpVerifyRateLimit } from '@/lib/rateLimit'
-import { sendWelcomeEmail } from '@/lib/email'
-import { createAuditLog, getClientIp } from '@/lib/audit'
 
 export async function POST(request: NextRequest) {
   try {
@@ -41,7 +38,7 @@ export async function POST(request: NextRequest) {
     }
 
     const record = await prisma.otpVerification.findFirst({
-      where: { identifier: emailStr, purpose: 'REGISTER' },
+      where: { identifier: emailStr, purpose: 'LOGIN' },
       orderBy: { createdAt: 'desc' },
     })
 
@@ -67,86 +64,46 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    let meta: { pendingUserId?: string } = {}
-    try {
-      meta = record.meta ? JSON.parse(record.meta) : {}
-    } catch {
-      meta = {}
-    }
-    const pendingUserId = meta.pendingUserId
-    if (!pendingUserId) {
-      return NextResponse.json(
-        { error: 'Registration data not found', code: 'INVALID_STATE' },
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      )
-    }
-
-    const pendingUser = await prisma.user.findUnique({
-      where: { id: pendingUserId },
-      include: { sponsor: { select: { sponsorCode: true } } },
+    const user = await prisma.user.findUnique({
+      where: { email: emailStr },
     })
 
-    if (!pendingUser || !pendingUser.email.startsWith('pending_')) {
+    if (!user || (user.status !== 'ACTIVE' && user.status !== 'FROZEN')) {
       await prisma.otpVerification.delete({ where: { id: record.id } }).catch(() => {})
       return NextResponse.json(
-        { error: 'Registration expired', code: 'OTP_EXPIRED' },
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
+        { error: 'Account not found or inactive', code: 'ACCOUNT_INACTIVE' },
+        { status: 403, headers: { 'Content-Type': 'application/json' } }
       )
     }
 
-    const actualEmail = pendingUser.email.replace(/^pending_/, '')
-    const sponsorCodeUsed = pendingUser.sponsor?.sponsorCode ?? null
-
-    const newUser = await prisma.user.create({
-      data: {
-        name: pendingUser.name,
-        email: actualEmail,
-        phone: pendingUser.phone,
-        city: pendingUser.city,
-        passwordHash: pendingUser.passwordHash,
-        role: 'BDM',
-        roleRank: getRoleRank('BDM'),
-        sponsorId: pendingUser.sponsorId,
-        path: pendingUser.path ?? [],
-        sponsorCode: generateSponsorCode(),
-        sponsorCodeUsed,
-        status: 'ACTIVE',
-        emailVerified: true,
-        emailVerifiedAt: new Date(),
-      },
-    })
-
     await prisma.otpVerification.delete({ where: { id: record.id } }).catch(() => {})
-    await prisma.user.delete({ where: { id: pendingUserId } }).catch(() => {})
 
-    await createAuditLog({
-      actorUserId: newUser.id,
-      action: 'USER_CREATED',
-      entityType: 'User',
-      entityId: newUser.id,
-      metaJson: { sponsorId: newUser.sponsorId, sponsorCodeUsed },
-      ip: getClientIp(request),
-    }).catch(() => {})
+    try {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { lastActive: new Date() },
+      })
+    } catch {
+      // non-critical
+    }
 
-    sendWelcomeEmail(actualEmail, newUser.name).catch(() => {})
-
-    const token = generateToken(newUser.id, newUser.role, (newUser as { tokenVersion?: number }).tokenVersion ?? 0)
+    const tokenVersion = (user as { tokenVersion?: number }).tokenVersion ?? 0
+    const token = generateToken(user.id, user.role, tokenVersion)
 
     return NextResponse.json(
       {
-        message: 'Registration successful',
         token,
         user: {
-          id: newUser.id,
-          name: newUser.name,
-          email: newUser.email,
-          role: newUser.role,
-          sponsorCode: newUser.sponsorCode ?? '',
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          sponsorCode: user.sponsorCode ?? '',
         },
       },
       { headers: { 'Content-Type': 'application/json' } }
     )
   } catch (error: unknown) {
-    return handleApiError(error, 'Verify OTP')
+    return handleApiError(error, 'Verify login OTP')
   }
 }

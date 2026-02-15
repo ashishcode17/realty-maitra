@@ -125,11 +125,12 @@ model User {
   emailVerifiedAt   DateTime?
   phoneVerified     Boolean     @default(false)
   phoneVerifiedAt   DateTime?
-  sponsorId         String? // parent_id
+  sponsorId         String?     // parent_id
   sponsor           User?       @relation("UserTree", fields: [sponsorId], references: [id])
   downlines         User[]      @relation("UserTree")
   path              String[]    // Array of ancestor IDs for tree queries
   sponsorCode       String?     @unique // Unique sponsor code for referrals
+  sponsorCodeUsed   String?    // Invite code used at sign-up (audit)
   lastActive        DateTime?   // Last active timestamp
   isDemo            Boolean     @default(false)
   roleAssignedBy    String?
@@ -522,4 +523,18 @@ model SupportTicket {
 
   @@index([userId])
   @@index([status])
+}
+
+// OTP for sign-up and login (invite-only + OTP flows)
+model OtpVerification {
+  id         String   @id @default(cuid())
+  identifier String   // email or normalized phone
+  otpHash    String
+  purpose    String   // REGISTER | LOGIN
+  meta       String?  @db.Text // JSON e.g. { pendingUserId }
+  expiresAt DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([identifier, purpose])
+  @@index([expiresAt])
 }

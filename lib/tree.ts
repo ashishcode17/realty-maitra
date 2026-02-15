@@ -59,6 +59,7 @@ export async function getSubtreeWithDetails(userId: string) {
       createdAt: true,
       sponsorId: true,
       path: true,
+      isDemo: true,
     },
     orderBy: { createdAt: 'desc' },
   })

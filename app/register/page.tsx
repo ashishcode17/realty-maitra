@@ -12,6 +12,25 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { toast } from 'sonner';
 
+const hideDemo = process.env.NEXT_PUBLIC_HIDE_DEMO === 'true';
+
+function getRegisterError(data: { error?: string; code?: string }): string {
+  switch (data.code) {
+    case 'RATE_LIMIT':
+      return 'Too many attempts. Please try again later.';
+    case 'INVALID_SPONSOR_CODE':
+      return 'Invalid sponsor code. Get a valid code from your inviter.';
+    case 'EMAIL_TAKEN':
+      return 'This email is already registered. Sign in instead.';
+    case 'OTP_EXPIRED':
+      return 'OTP expired. Request a new one.';
+    case 'INVALID_OTP':
+      return 'Invalid OTP. Check and try again.';
+    default:
+      return data.error || 'Registration failed.';
+  }
+}
+
 export default function RegisterPage() {
   const router = useRouter();
   const [step, setStep] = useState(1); // 1: Form, 2: OTP
@@ -24,32 +43,29 @@ export default function RegisterPage() {
     sponsorCode: '',
   });
   const [otp, setOtp] = useState('');
-  const [mockOTP, setMockOTP] = useState(''); // For MVP
+  const [mockOTP, setMockOTP] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
     try {
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
-
       const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || 'Registration failed');
+        toast.error(getRegisterError(data));
+        return;
       }
-
-      setMockOTP(data.mockOTP); // Store mock OTP for display
-      toast.success('OTP sent! Check console or use: ' + data.mockOTP);
+      setMockOTP(data.mockOTP ?? '');
+      toast.success('OTP sent to your email');
       setStep(2);
-    } catch (error: any) {
-      toast.error(error.message || 'Registration failed');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Registration failed');
     } finally {
       setLoading(false);
     }
@@ -58,25 +74,22 @@ export default function RegisterPage() {
   const handleVerifyOTP = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
     try {
       const response = await fetch('/api/auth/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: formData.email, otp }),
+        body: JSON.stringify({ email: formData.email.trim().toLowerCase(), otp }),
       });
-
       const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || 'OTP verification failed');
+        toast.error(getRegisterError(data));
+        return;
       }
-
       localStorage.setItem('token', data.token);
-      toast.success(`Registration successful! Welcome to ${brand.appName}`);
+      toast.success(`Welcome to ${brand.appName}!`);
       router.push('/dashboard');
-    } catch (error: any) {
-      toast.error(error.message || 'OTP verification failed');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Verification failed');
     } finally {
       setLoading(false);
     }
@@ -175,17 +188,17 @@ export default function RegisterPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="sponsorCode" className="text-slate-300">Sponsor Code *</Label>
+                  <Label htmlFor="sponsorCode" className="text-slate-300">Sponsor / Invite Code *</Label>
                   <Input
                     id="sponsorCode"
-                    placeholder="Enter sponsor code (e.g., DEMO1234)"
+                    placeholder="Enter invite code from your sponsor"
                     value={formData.sponsorCode}
-                    onChange={(e) => setFormData({ ...formData, sponsorCode: e.target.value.toUpperCase() })}
+                    onChange={(e) => setFormData({ ...formData, sponsorCode: e.target.value.trim().toUpperCase() })}
                     required
                     className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400"
                   />
                   <p className="text-xs text-slate-400">
-                    Don't have a sponsor code? Contact an existing member to get one.
+                    You need a valid invite code from an existing member to join.
                   </p>
                 </div>
 
@@ -211,11 +224,12 @@ export default function RegisterPage() {
                 </p>
               </div>
 
-              {/* Demo Sponsor Code */}
-              <div className="mt-6 p-4 bg-emerald-900/20 rounded-lg border border-emerald-800">
-                <p className="text-xs text-emerald-300 mb-1 font-semibold">💡 Demo Sponsor Code:</p>
-                <p className="text-sm text-emerald-400 font-mono">DEMO1234</p>
-              </div>
+              {!hideDemo && (
+                <div className="mt-6 p-4 bg-emerald-900/20 rounded-lg border border-emerald-800">
+                  <p className="text-xs text-emerald-300 mb-1 font-semibold">Demo invite code:</p>
+                  <p className="text-sm text-emerald-400 font-mono">DEMO1234</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         ) : (
@@ -230,11 +244,8 @@ export default function RegisterPage() {
               <form onSubmit={handleVerifyOTP} className="space-y-6">
                 {mockOTP && (
                   <div className="p-4 bg-emerald-900/20 rounded-lg border border-emerald-800">
-                    <p className="text-xs text-emerald-300 mb-1">📧 Mock OTP (MVP Mode):</p>
+                    <p className="text-xs text-emerald-300 mb-1">Dev OTP (check email in production):</p>
                     <p className="text-2xl text-emerald-400 font-mono font-bold">{mockOTP}</p>
-                    <p className="text-xs text-slate-400 mt-2">
-                      In production, this would be sent via email.
-                    </p>
                   </div>
                 )}
 

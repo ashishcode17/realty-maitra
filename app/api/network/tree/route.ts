@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth } from '@/lib/middleware'
+import { getSubtreeWithDetails } from '@/lib/tree'
 import { calculateTreeStats } from '@/lib/treeUtils'
 import { handleApiError } from '@/lib/error-handler'
 import { applyPrivacy, parsePrivacyPrefs } from '@/lib/privacy'
+
+const isProduction = process.env.NODE_ENV === 'production'
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,21 +14,18 @@ export async function GET(request: NextRequest) {
     if (auth instanceof NextResponse) return auth
 
     const user = await prisma.user.findUnique({
-      where: { id: auth.userId }
+      where: { id: auth.userId },
     })
 
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    const allUsers = await prisma.user.findMany({
-      where: { status: 'ACTIVE' }
-    })
-
-    const subtreeUsers = allUsers.filter(u =>
-      (u.path && Array.isArray(u.path) && u.path.includes(user.id)) ||
-      u.sponsorId === user.id
-    )
+    // Subtree-only: never load all users; only current user's downline
+    let subtreeUsers = await getSubtreeWithDetails(auth.userId)
+    if (isProduction) {
+      subtreeUsers = subtreeUsers.filter((u) => !(u as { isDemo?: boolean }).isDemo)
+    }
 
     const userIds = subtreeUsers.map((u) => u.id)
     const settingsList = userIds.length > 0

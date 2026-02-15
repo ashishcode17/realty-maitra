@@ -10,8 +10,10 @@
     "lint": "eslint",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
     "seed:demo": "tsx scripts/seedDemo.ts",
+    "clear:demo": "tsx scripts/clearDemoData.ts",
     "test:db": "node scripts/test-db-connection.js",
     "db:studio": "prisma studio"
   },

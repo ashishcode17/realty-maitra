@@ -14,7 +14,10 @@ export async function GET(request: NextRequest) {
     const isAdmin = auth.role === 'SUPER_ADMIN' || auth.role === 'ADMIN'
     const rootId = isAdmin && rootIdParam ? rootIdParam : auth.userId
 
-    const users = await getSubtreeWithDetails(rootId)
+    let users = await getSubtreeWithDetails(rootId)
+    if (process.env.NODE_ENV === 'production') {
+      users = users.filter((u) => !(u as { isDemo?: boolean }).isDemo)
+    }
     const userIds = users.map((u) => u.id)
     const settingsList = userIds.length > 0
       ? await prisma.userSettings.findMany({ where: { userId: { in: userIds } } })

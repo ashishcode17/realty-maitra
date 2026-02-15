@@ -210,7 +210,9 @@ export function NetworkTreeView({
   fullNetwork?: boolean
 }) {
   const rootId = rootIdProp ?? meId
-  const mindmapDepth = fullNetwork ? 25 : (isAdmin ? 12 : 2)
+  // Keep initial depth modest so first load is lighter,
+  // especially on free infra (Neon + Vercel cold starts).
+  const mindmapDepth = fullNetwork ? 10 : (isAdmin ? 6 : 2)
   const [root, setRoot] = useState<TreeNode | null>(null)
   const [loading, setLoading] = useState(true)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())

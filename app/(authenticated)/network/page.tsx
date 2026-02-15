@@ -31,7 +31,8 @@ export default function NetworkPage() {
   const [sponsorLink, setSponsorLink] = useState('')
   const [qrCodeUrl, setQrCodeUrl] = useState('')
   const [loading, setLoading] = useState(true)
-  const [view, setView] = useState<'list' | 'mindmap'>('mindmap')
+  // Default to the lighter list view; tree view is opt‑in
+  const [view, setView] = useState<'list' | 'mindmap'>('list')
   const [searchTerm, setSearchTerm] = useState('')
   const [adminUsers, setAdminUsers] = useState<NetworkUser[]>([])
   const [selectedRootId, setSelectedRootId] = useState<string | null>(null)
@@ -52,7 +53,6 @@ export default function NetworkPage() {
       .then((data) => {
         if (data.user) {
           setUser(data.user)
-          setView('mindmap')
           const link = `${window.location.origin}/register?sponsor=${data.user.id}`
           setSponsorLink(link)
           QRCode.toDataURL(link).then((url) => setQrCodeUrl(url))

@@ -1,9 +1,11 @@
 import { prisma } from './prisma'
 
 export type AuditAction =
+  | 'USER_CREATED'
   | 'ROLE_CHANGE'
   | 'SPONSOR_REASSIGN'
   | 'USER_STATUS_CHANGE'
+  | 'REFERRAL_CODE_REGENERATED'
   | 'EARNINGS_CREATE'
   | 'EARNINGS_UPDATE'
   | 'EARNINGS_STATUS_CHANGE'
