@@ -8,22 +8,25 @@ echo.
 echo Folder: %CD%
 echo.
 
-echo [1] Current branch:
+echo [1] Git remote (must match Vercel connected repo):
+git remote -v
+echo.
+echo [2] Current branch (Vercel Production Branch should match):
 git branch --show-current
 echo.
 
-echo [2] Pulling latest from GitHub...
+echo [3] Pulling latest from GitHub...
 git pull origin main 2>nul
 if errorlevel 1 (
   echo Could not pull - maybe no remote. Continuing...
 )
 echo.
 
-echo [3] Status (changed files):
+echo [4] Status (changed files):
 git status --short
 echo.
 
-echo [4] Adding all files...
+echo [5] Adding all files...
 git add .
 if errorlevel 1 (
   echo ERROR: git add failed
@@ -31,7 +34,7 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo [5] Committing...
+echo [6] Committing...
 git commit -m "Update live app" 2>nul
 if errorlevel 1 (
   echo No new changes to commit - will push any existing commits.
@@ -40,7 +43,7 @@ if errorlevel 1 (
 )
 echo.
 
-echo [6] Pushing to GitHub (origin main)...
+echo [7] Pushing to GitHub (origin main)...
 git push origin main
 if errorlevel 1 (
   echo.

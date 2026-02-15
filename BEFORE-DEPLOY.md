@@ -16,10 +16,31 @@ Or double‑click **DEPLOY-LIVE.bat** — and make sure that file is inside **re
 
 ### Why don't I see my changes on the live site?
 
-- **Two folders:** Edits were made in **realty-collective**. If your live site is built from **realty-collective-COMPLETE** (or another repo), it will never show those changes.
-- **Do this:** Run **DEPLOY-LIVE.bat** from inside the **realty-collective** folder (File Explorer → `realty-collective` → double‑click the bat file). Don't run it from realty-collective-COMPLETE.
-- **Vercel:** Settings → Git → check which repository is connected. It must be the repo you push from when you're in realty-collective.
-- **Cache:** After deploy, do a hard refresh on the site (Ctrl+Shift+R) to avoid old cached files.
+Follow this checklist. **One mismatch is enough** for Vercel to build the wrong code.
+
+1. **Run deploy from the right folder**  
+   Run **DEPLOY-LIVE.bat** from inside **realty-collective** only (e.g. File Explorer → open `realty-collective` → double‑click the bat). Don’t run it from Desktop or from realty-collective-COMPLETE.
+
+2. **Confirm which GitHub repo you’re pushing to**  
+   After running the bat file, check the line that says “Pushing to GitHub…”.  
+   Or in Cursor: open a terminal in **realty-collective** and run:  
+   `git remote -v`  
+   Note the URL (e.g. `https://github.com/YourName/some-repo.git`).
+
+3. **Vercel must use that same repo**  
+   Vercel → your project → **Settings** → **Git**:
+   - **Connected Git Repository** must be the **exact same** repo as the one from step 2. If Vercel is connected to a different repo (e.g. one that has realty-collective-COMPLETE), it will never build your realty-collective changes.
+   - **Production Branch** is usually `main`. Your batch file pushes to `main`; if Vercel’s production branch is something else (e.g. `master`), change it to `main` or push to that branch instead.
+   - **Root Directory** must be blank (or `.`) so Vercel builds from the repo root. Your realty-collective folder *is* the repo root when you push from it, so no subfolder should be set.
+
+4. **Make sure the push actually succeeds**  
+   When the batch file finishes, it should say “DONE. GitHub updated.” and **not** “PUSH FAILED”. If push fails (e.g. login popup cancelled), GitHub never gets your changes and Vercel has nothing new to build.
+
+5. **Confirm Vercel built the latest commit**  
+   Vercel → **Deployments** → click the latest deployment → check the **commit message** and **commit hash**. They should match your latest “Update live app” (or whatever you committed). If the deployed commit is old, Vercel is either not getting pushes or is building from the wrong branch/repo.
+
+6. **Hard refresh the site**  
+   After a new deploy, do a hard refresh so the browser doesn’t show cached files: **Ctrl+Shift+R** (or Cmd+Shift+R on Mac).
 
 ---
 
