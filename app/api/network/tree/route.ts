@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
         auth.userId,
         viewerIsAdmin
       )
-      const uAny = u as { sponsorCode?: string | null; lastActive?: Date | null; updatedAt?: Date }
+      const uRow = u as Record<string, unknown>
       return {
         id: u.id,
         name: u.name,
@@ -53,10 +53,10 @@ export async function GET(request: NextRequest) {
         roleRank: u.roleRank,
         parentId: u.sponsorId,
         path: u.path || [],
-        sponsorCode: uAny.sponsorCode ?? '',
+        sponsorCode: (uRow.sponsorCode as string | null | undefined) ?? '',
         status: u.status,
         createdAt: u.createdAt,
-        lastActive: uAny.lastActive ?? uAny.updatedAt ?? u.createdAt,
+        lastActive: (uRow.lastActive as Date | null | undefined) ?? (uRow.updatedAt as Date | undefined) ?? u.createdAt,
       }
     })
 
