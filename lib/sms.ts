@@ -31,9 +31,11 @@ function isIndianNumber(phone: string): boolean {
 }
 
 /**
- * Fast2SMS – India only, free tier (₹50 credit).
+ * Fast2SMS – India. Two routes:
+ * - route "otp" = OTP route (uses wallet; free ₹50 after signup if you verify mobile + email).
+ * - route "q" = Quick SMS (₹5/SMS, no DLT). Set FAST2SMS_USE_QUICK_SMS=true to use this.
  * Docs: https://www.fast2sms.com/otp-sms
- * Get API key: https://www.fast2sms.com/dashboard/dev-api
+ * API key: https://www.fast2sms.com/dashboard/dev-api
  */
 async function sendViaFast2SMS(phone: string, otp: string): Promise<boolean> {
   const apiKey = process.env.FAST2SMS_API_KEY?.trim()
@@ -50,13 +52,12 @@ async function sendViaFast2SMS(phone: string, otp: string): Promise<boolean> {
     return false
   }
 
+  const useQuickSms = process.env.FAST2SMS_USE_QUICK_SMS === 'true'
   const url = 'https://www.fast2sms.com/dev/bulkV2'
-  const body = {
-    route: 'otp',
-    variables_values: String(otp),
-    numbers: numbers,
-    flash: 0,
-  }
+  const body = useQuickSms
+    ? { route: 'q', message: `Your OTP is ${otp}. Valid for 10 minutes.`, numbers, flash: 0 }
+    : { route: 'otp', variables_values: String(otp), numbers, flash: 0 }
+
   try {
     const res = await fetch(url, {
       method: 'POST',
@@ -76,11 +77,12 @@ async function sendViaFast2SMS(phone: string, otp: string): Promise<boolean> {
     })()
 
     if (!res.ok) {
-      console.error('[SMS] Fast2SMS HTTP', res.status, text?.slice(0, 200))
+      console.error('[SMS] Fast2SMS HTTP', res.status, text?.slice(0, 300))
       return false
     }
     if (data.return === false || (data.message && String(data.message).toLowerCase().includes('error'))) {
-      console.error('[SMS] Fast2SMS API error:', data.message ?? data)
+      // Log full response so you can see "Insufficient balance", "Invalid key", etc. in Vercel logs
+      console.error('[SMS] Fast2SMS API error:', JSON.stringify(data))
       return false
     }
     return true

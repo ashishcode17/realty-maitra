@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { compareOTP, generateToken } from '@/lib/auth'
+import { generateToken } from '@/lib/auth'
 import { handleApiError } from '@/lib/error-handler'
 import { checkOtpVerifyRateLimit } from '@/lib/rateLimit'
+import { verifyFirebaseIdToken } from '@/lib/firebase-admin'
+
+function normalizeForCompare(phone: string): string {
+  const s = phone.replace(/\D/g, '')
+  if (s.length >= 10 && s.startsWith('91')) return s.slice(-10)
+  return s.slice(-10)
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,46 +27,21 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json().catch(() => ({}))
-    const { email, otp } = body
+    const { email, firebaseIdToken } = body
     const emailStr = typeof email === 'string' ? email.trim().toLowerCase() : ''
-    const otpStr = typeof otp === 'string' ? otp.trim() : ''
+    const idToken = typeof firebaseIdToken === 'string' ? firebaseIdToken.trim() : ''
 
-    if (!emailStr || !otpStr) {
+    if (!emailStr || !idToken) {
       return NextResponse.json(
-        { error: 'Email and OTP are required', code: 'MISSING_FIELDS' },
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      )
-    }
-    if (otpStr.length !== 6 || !/^\d+$/.test(otpStr)) {
-      return NextResponse.json(
-        { error: 'Invalid OTP format', code: 'INVALID_OTP' },
+        { error: 'Email and phone verification are required', code: 'MISSING_FIELDS' },
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       )
     }
 
-    const record = await prisma.otpVerification.findFirst({
-      where: { identifier: emailStr, purpose: 'LOGIN' },
-      orderBy: { createdAt: 'desc' },
-    })
-
-    if (!record) {
+    const decoded = await verifyFirebaseIdToken(idToken)
+    if (!decoded) {
       return NextResponse.json(
-        { error: 'OTP expired or not found', code: 'OTP_EXPIRED' },
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      )
-    }
-    if (new Date() > record.expiresAt) {
-      await prisma.otpVerification.delete({ where: { id: record.id } }).catch(() => {})
-      return NextResponse.json(
-        { error: 'OTP expired', code: 'OTP_EXPIRED' },
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      )
-    }
-
-    const valid = compareOTP(otpStr, record.otpHash)
-    if (!valid) {
-      return NextResponse.json(
-        { error: 'Invalid OTP', code: 'INVALID_OTP' },
+        { error: 'Invalid or expired phone verification', code: 'INVALID_FIREBASE_TOKEN' },
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       )
     }
@@ -67,16 +49,27 @@ export async function POST(request: NextRequest) {
     const user = await prisma.user.findUnique({
       where: { email: emailStr },
     })
-
     if (!user || (user.status !== 'ACTIVE' && user.status !== 'FROZEN')) {
-      await prisma.otpVerification.delete({ where: { id: record.id } }).catch(() => {})
       return NextResponse.json(
         { error: 'Account not found or inactive', code: 'ACCOUNT_INACTIVE' },
         { status: 403, headers: { 'Content-Type': 'application/json' } }
       )
     }
+    if (!user.phone) {
+      return NextResponse.json(
+        { error: 'No phone on file', code: 'NO_PHONE' },
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
 
-    await prisma.otpVerification.delete({ where: { id: record.id } }).catch(() => {})
+    const tokenPhone = normalizeForCompare(decoded.phone_number)
+    const userPhone = normalizeForCompare(user.phone)
+    if (tokenPhone !== userPhone) {
+      return NextResponse.json(
+        { error: 'Phone does not match this account', code: 'PHONE_MISMATCH' },
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
 
     try {
       await prisma.user.update({
