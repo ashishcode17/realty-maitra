@@ -22,12 +22,14 @@ export async function GET(request: NextRequest) {
         city: true,
         profilePhotoUrl: true,
         role: true,
+        rank: true,
         sponsorId: true,
         sponsorCode: true,
+        sponsorCodeUsed: true,
         createdAt: true,
         emailVerified: true,
         phoneVerified: true,
-        sponsor: { select: { id: true, name: true, email: true } },
+        sponsor: { select: { id: true, name: true, email: true, sponsorCode: true } },
       },
     })
 

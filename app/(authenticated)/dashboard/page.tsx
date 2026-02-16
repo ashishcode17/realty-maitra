@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Users, TrendingUp, Award, Calendar, ArrowUpRight, UserPlus, Copy } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
+import { getRankLabel } from '@/lib/ranks'
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<any>(null)
@@ -63,8 +64,20 @@ export default function DashboardPage() {
     )
   }
 
+  const rankLabel = user?.rank ? getRankLabel(user.rank) : (user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN' ? 'Admin' : 'BDM');
+
   return (
     <div className="space-y-6">
+      <div className="p-4 rounded-lg bg-slate-800/80 border border-slate-700">
+        <p className="text-slate-400 text-sm"><strong className="text-slate-300">Position:</strong> {rankLabel}</p>
+        {(user?.joinedUnderSponsorName || user?.joinedUnderSponsorCode) && (
+          <>
+            <p className="text-slate-400 text-sm mt-1"><strong className="text-slate-300">Reporting To:</strong> {user.joinedUnderSponsorName ?? '—'}</p>
+            <p className="text-slate-400 text-sm"><strong className="text-slate-300">Sponsor Code:</strong> <span className="font-mono text-slate-200">{user.joinedUnderSponsorCode ?? '—'}</span></p>
+          </>
+        )}
+      </div>
+
       <div>
         <h1 className="text-3xl font-bold text-white mb-2">Welcome, {user?.name}!</h1>
         <p className="text-slate-400">Your dashboard overview</p>
@@ -90,8 +103,8 @@ export default function DashboardPage() {
         <Card className="bg-slate-800 border-slate-700">
           <CardContent className="pt-6">
             <Award className="h-8 w-8 text-amber-500 mb-2" />
-            <p className="text-2xl font-bold text-white">{user?.role || 'BDM'}</p>
-            <p className="text-sm text-slate-400">Your Role</p>
+            <p className="text-2xl font-bold text-white">{rankLabel}</p>
+            <p className="text-sm text-slate-400">Position</p>
           </CardContent>
         </Card>
 
@@ -154,7 +167,7 @@ export default function DashboardPage() {
           )}
           <Card className="bg-emerald-900/20 border-emerald-800">
             <CardContent className="pt-6">
-              <h3 className="text-white font-semibold mb-2">Your invite code</h3>
+              <h3 className="text-white font-semibold mb-2">Your Invite Code</h3>
               <p className="text-slate-300 text-sm mb-2">Share this code so others can join under you.</p>
               <div className="flex flex-wrap items-center gap-2">
                 <code className="px-4 py-2 bg-slate-900 rounded font-mono text-emerald-400 text-xl">

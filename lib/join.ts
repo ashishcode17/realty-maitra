@@ -24,6 +24,8 @@ export type ResolvedSponsor = {
   path: string[]
   sponsorCode: string
   name: string
+  role: string
+  rank: string
 }
 
 /**
@@ -37,10 +39,10 @@ export async function resolveSponsorFromInviteCode(
   const code = normalizeInviteCode(inviteCode)
   if (!code) return null
 
-  let sponsor: { id: string; path: string[] | null; sponsorCode: string | null; name: string } | null =
+  let sponsor: { id: string; path: string[] | null; sponsorCode: string | null; name: string; role: string; rank: string } | null =
     await prisma.user.findFirst({
       where: { sponsorCode: code, status: 'ACTIVE' },
-      select: { id: true, path: true, sponsorCode: true, name: true },
+      select: { id: true, path: true, sponsorCode: true, name: true, role: true, rank: true },
     })
 
   if (!sponsor && code === 'DEMO1234') {
@@ -48,7 +50,7 @@ export async function resolveSponsorFromInviteCode(
     if (demo) {
       const u = await prisma.user.findFirst({
         where: { sponsorCode: code, status: 'ACTIVE' },
-        select: { id: true, path: true, sponsorCode: true, name: true },
+        select: { id: true, path: true, sponsorCode: true, name: true, role: true, rank: true },
       })
       sponsor = u
     }
@@ -59,7 +61,7 @@ export async function resolveSponsorFromInviteCode(
       where: { status: 'ACTIVE', sponsorCode: { not: null } },
     })
     if (count === 0) {
-      return { id: '', path: [], sponsorCode: code, name: '' }
+      return { id: '', path: [], sponsorCode: code, name: '', role: 'ADMIN', rank: 'ADMIN' }
     }
   }
 
@@ -69,6 +71,8 @@ export async function resolveSponsorFromInviteCode(
     path: sponsor.path ?? [],
     sponsorCode: sponsor.sponsorCode ?? code,
     name: sponsor.name,
+    role: sponsor.role,
+    rank: sponsor.rank,
   }
 }
 
@@ -117,4 +121,15 @@ export function validateNotOwnInviteCode(
 ): boolean {
   if (!ownSponsorCode) return true
   return normalizeInviteCode(inviteCode) !== normalizeInviteCode(ownSponsorCode)
+}
+
+/**
+ * First user (root) rule: if no users exist, registration is allowed without invite code.
+ * Server-side only. Exclude pending (email starting with pending_) from count.
+ */
+export async function isFirstUserAllowed(): Promise<boolean> {
+  const count = await prisma.user.count({
+    where: { email: { not: { startsWith: 'pending_' } } },
+  })
+  return count === 0
 }

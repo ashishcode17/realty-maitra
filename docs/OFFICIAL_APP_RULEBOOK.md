@@ -122,10 +122,81 @@ This document defines the **official functioning rules** of the app. All code mu
 ## Error codes (API)
 
 - **invalid_invite_code** / **INVALID_SPONSOR_CODE**: Invite code not found or sponsor not ACTIVE.
+- **invite_code_required**: Users exist; registration requires a valid invite code.
+- **rank_not_allowed**: The chosen rank is not in the allowed set for this sponsor.
+- **director_restricted**: Only Admin can create Director-level accounts.
 - **already_registered** / **EMAIL_TAKEN**: Email already in use.
 - **PHONE_TAKEN**: Phone already in use (when phone unique is enforced).
 - **forbidden_visibility**: Requested resource is outside the caller’s allowed subtree (or not allowed for role).
 - **RATE_LIMIT**: Too many attempts.
+
+---
+
+---
+
+## G) Organised start — first user (root) rule
+
+- **The first user ever created in the system** may register **without** an invite code.
+- This first user becomes **SUPER_ADMIN** (role) and **ADMIN** (rank). They are the root of the tree.
+- **Enforcement**: Server-side only. Before accepting registration, the server checks total user count (excluding pending). If count is 0, invite code is not required and the registrant is created as root admin. If count ≥ 1, a valid invite code is **required**.
+- No UI-only gating: the API must enforce this regardless of what the client sends.
+
+---
+
+## H) Short invite code format
+
+- Invite codes are **4–5 character** alphanumeric (e.g. `A9K2`, `Q7X3P`).
+- **Allowed characters**: A–Z and 0–9 only. Case-insensitive; stored and compared in uppercase.
+- **Uniqueness**: Enforced by database unique constraint on `sponsorCode`. Generation must retry on collision (e.g. P2002).
+- Generated server-side only. Never guessable from user id; use a safe random source.
+
+---
+
+## I) Position / rank system (separate from role)
+
+- **Role** = permissions (SUPER_ADMIN, ADMIN for admin capabilities). Kept for access control.
+- **Rank** = hierarchy position. Every user has exactly one **Rank**.
+- **Ranks** (top to bottom): **ADMIN** (root only) > **DIRECTOR** > **VP** > **SSM** > **SM** > **BDM**.
+- Rank is stored in `User.rank`. It is used for: allowed ranks under a sponsor, display (“Position”), and reporting structure.
+
+---
+
+## J) Strict rank creation / assignment rules (critical)
+
+- **Only SUPER_ADMIN or ADMIN (role) can create or assign the DIRECTOR rank.** No one else may create a DIRECTOR, including via:
+  - Client-side manipulation (e.g. sending rank=DIRECTOR in payload).
+  - Direct API calls without admin context.
+  - Changing payload fields.
+- **Allowed ranks under a sponsor** (server-enforced):
+  - If sponsor has **role** ADMIN or SUPER_ADMIN (or rank ADMIN): allowed = DIRECTOR, VP, SSM, SM, BDM.
+  - If sponsor **rank** is DIRECTOR: allowed = VP, SSM, SM, BDM.
+  - If sponsor rank is VP: allowed = SSM, SM, BDM.
+  - If sponsor rank is SSM: allowed = SM, BDM.
+  - If sponsor rank is SM: allowed = BDM.
+  - If sponsor rank is BDM: allowed = BDM only (optional; can be restricted to “no new direct BDM under BDM” if desired; default: BDM can only add BDM).
+- At registration, the client may only **choose** from the allowed set returned by the server. The server must reject any rank not in that set and must reject DIRECTOR unless the sponsor is admin.
+
+---
+
+## K) Official onboarding flow
+
+1. **If no users exist**
+   - Show “Create Root Admin” / “Initialize Organization” (no invite code).
+   - Fields: Full Name, Email, Phone, Password.
+   - On success: create user with role=SUPER_ADMIN, rank=ADMIN, sponsorId=null, path=[], and a short unique invite code.
+2. **If users exist**
+   - Invite code **required**. Validate invite code → resolve sponsor.
+   - Show sponsor identity: “Joining under: [Sponsor Name]”, “Sponsor Code: [XXXX]”.
+   - Show **only** allowed rank options (from server) based on sponsor’s rank/role. Registrant chooses one.
+   - Create account: parentId/path/level set by server from invite only; rank must be in allowed list; generate and assign short invite code immediately.
+   - Show success: “Welcome…”, “Your Position: [Rank]”, “Your Personal Invite Code: [XXXX]” with copy.
+
+---
+
+## L) Tree visibility (unchanged)
+
+- Members see only their **downline** subtree. They must not see other branches, uplines (except for “reporting to” display), or siblings in tree APIs.
+- Admin / Super Admin can see all users via admin APIs.
 
 ---
 
@@ -134,7 +205,8 @@ This document defines the **official functioning rules** of the app. All code mu
 - **Invite code expiry**: Currently there is no expiry. If product later adds “time-limited” codes, that will be documented here and implemented explicitly.
 - **Maximum tree depth**: No limit is enforced. If a limit is introduced later, it will be documented and enforced in join logic.
 - **Sponsor reassignment by admin**: Allowed via existing `updateSponsorAndRecomputePaths`-style logic; exact admin UI/API is out of scope of this rulebook but must preserve no-cycles and path recompute.
+- **BDM under BDM**: Allowed by default (rank list includes BDM under BDM). Can be restricted later if desired.
 
 ---
 
-*Last updated: Official production mode. All join and tree logic must align with this rulebook.*
+*Last updated: Official production mode. Organised start + rank rules. All join and tree logic must align with this rulebook.*

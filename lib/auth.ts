@@ -36,6 +36,18 @@ export function generateOTP(): string {
   return Math.floor(100000 + Math.random() * 900000).toString()
 }
 
+const INVITE_CODE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+
+/** Short 4–5 character invite code (A–Z, 0–9). Unique; retry on collision in caller. */
+export function generateShortInviteCode(length: number = 5): string {
+  let s = ''
+  for (let i = 0; i < length; i++) {
+    s += INVITE_CODE_CHARS[Math.floor(Math.random() * INVITE_CODE_CHARS.length)]
+  }
+  return s
+}
+
+/** Legacy 8-char code; prefer generateShortInviteCode for new users. */
 export function generateSponsorCode(): string {
   return nanoid(8).toUpperCase()
 }

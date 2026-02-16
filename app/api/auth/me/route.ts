@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
         sponsorId: true,
         sponsorCode: true,
         sponsorCodeUsed: true,
+        rank: true,
         isDemo: true,
         sponsor: {
           select: { id: true, name: true, sponsorCode: true },
@@ -54,11 +55,12 @@ export async function GET(request: NextRequest) {
       phoneVerified: user.phoneVerified,
       createdAt: user.createdAt,
       sponsorId: user.sponsorId,
-      sponsorCode: user.sponsorCode,
-      sponsorCodeUsed: user.sponsorCodeUsed,
-      isDemo: user.isDemo,
-      joinedUnderSponsorName: sponsor?.name ?? null,
-      joinedUnderSponsorCode: user.sponsorCodeUsed ?? sponsor?.sponsorCode ?? null,
+        sponsorCode: user.sponsorCode,
+        sponsorCodeUsed: user.sponsorCodeUsed,
+        rank: user.rank,
+        isDemo: user.isDemo,
+        joinedUnderSponsorName: sponsor?.name ?? null,
+        joinedUnderSponsorCode: user.sponsorCodeUsed ?? sponsor?.sponsorCode ?? null,
     }
     return NextResponse.json({ user: userPayload })
   } catch (error: any) {

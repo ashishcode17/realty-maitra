@@ -12,8 +12,10 @@ import {
   computePathForNewUser,
   validateEmailNotTaken,
   validatePhoneNotTaken,
+  isFirstUserAllowed,
   JOIN_ERROR_CODES,
 } from '@/lib/join'
+import { isRankAllowedUnderSponsor, canAssignDirector, type Rank } from '@/lib/ranks'
 import { nanoid } from 'nanoid'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -39,16 +41,38 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json().catch(() => ({}))
-    const { name, email, phone, city, password, sponsorCode } = body
+    const { name, email, phone, city, password, sponsorCode, rank: chosenRank, rootAdmin } = body
     const nameStr = typeof name === 'string' ? name.trim() : ''
     const emailStr = typeof email === 'string' ? email.trim().toLowerCase() : ''
     const phoneStr = typeof phone === 'string' ? phone.trim() : ''
     const passwordStr = typeof password === 'string' ? password : ''
     const sponsorCodeStr = normalizeInviteCode(sponsorCode)
+    const isRootPath = rootAdmin === true || rootAdmin === 'true'
 
-    if (!nameStr || !emailStr || !phoneStr || !passwordStr || !sponsorCodeStr) {
+    const firstUserAllowed = await isFirstUserAllowed()
+    if (isRootPath && !firstUserAllowed) {
+      return NextResponse.json(
+        { error: 'Only the first user can create the root admin.', code: 'ROOT_ALREADY_EXISTS' },
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (!nameStr || !emailStr || !phoneStr || !passwordStr) {
       return NextResponse.json(
         { error: 'All fields are required', code: 'MISSING_FIELDS' },
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (!isRootPath && !sponsorCodeStr) {
+      if (firstUserAllowed) {
+        return NextResponse.json(
+          { error: 'Enter an invite code or create the root admin.', code: 'INVITE_OR_ROOT' },
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        )
+      }
+      return NextResponse.json(
+        { error: 'A valid invite code is required to register.', code: 'invite_code_required' },
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       )
     }
@@ -81,16 +105,51 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const sponsor = await resolveSponsorFromInviteCode(sponsorCodeStr)
-    if (!sponsor) {
-      return NextResponse.json(
-        { error: 'Invalid invite code', code: JOIN_ERROR_CODES.INVALID_INVITE_CODE },
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      )
-    }
+    let sponsor: Awaited<ReturnType<typeof resolveSponsorFromInviteCode>> = null
+    let isFirstUser = false
+    let path: string[] = []
+    let role: 'SUPER_ADMIN' | 'ADMIN' | 'DIRECTOR' | 'VP' | 'AVP' | 'SSM' | 'SM' | 'BDM' = 'BDM'
+    let rank: Rank = 'BDM'
 
-    const isFirstUser = sponsor.id === ''
-    const path = computePathForNewUser(sponsor)
+    if (isRootPath && firstUserAllowed) {
+      isFirstUser = true
+      path = []
+      role = 'SUPER_ADMIN'
+      rank = 'ADMIN'
+    } else {
+      sponsor = await resolveSponsorFromInviteCode(sponsorCodeStr)
+      if (!sponsor) {
+        return NextResponse.json(
+          { error: 'The invite code you entered is invalid. Please verify and try again.', code: JOIN_ERROR_CODES.INVALID_INVITE_CODE },
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        )
+      }
+      isFirstUser = sponsor.id === ''
+      path = computePathForNewUser(sponsor)
+
+      const rankStr = typeof chosenRank === 'string' ? chosenRank.trim().toUpperCase() : ''
+      const allowedRanks: Rank[] = ['ADMIN', 'DIRECTOR', 'VP', 'SSM', 'SM', 'BDM']
+      if (!rankStr || !allowedRanks.includes(rankStr as Rank)) {
+        return NextResponse.json(
+          { error: 'You must select a valid position.', code: 'rank_not_allowed' },
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        )
+      }
+      if (rankStr === 'DIRECTOR' && !canAssignDirector(sponsor.role, sponsor.rank as Rank)) {
+        return NextResponse.json(
+          { error: 'Only Admin can create Director-level accounts.', code: 'director_restricted' },
+          { status: 403, headers: { 'Content-Type': 'application/json' } }
+        )
+      }
+      if (!isRankAllowedUnderSponsor({ chosenRank: rankStr, sponsorRank: sponsor.rank as Rank, sponsorRole: sponsor.role })) {
+        return NextResponse.json(
+          { error: 'You cannot join at this position under your current sponsor.', code: 'rank_not_allowed' },
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        )
+      }
+      rank = rankStr as Rank
+      role = rank === 'DIRECTOR' ? 'DIRECTOR' : rank === 'VP' ? 'VP' : rank === 'SSM' ? 'SSM' : rank === 'SM' ? 'SM' : 'BDM'
+    }
 
     await prisma.user.deleteMany({ where: { email: `pending_${emailStr}` } })
     await prisma.otpVerification.deleteMany({ where: { identifier: emailStr, purpose: 'REGISTER' } })
@@ -107,10 +166,11 @@ export async function POST(request: NextRequest) {
         phone: phoneStr,
         city: typeof city === 'string' ? city.trim() || null : null,
         passwordHash: hashPassword(passwordStr),
-        role: 'BDM',
-        roleRank: getRoleRank('BDM'),
-        sponsorId: isFirstUser ? null : sponsor.id,
+        role,
+        roleRank: getRoleRank(role),
+        sponsorId: isFirstUser ? null : sponsor!.id,
         path,
+        rank,
         status: 'PENDING_VERIFICATION',
         emailVerified: false,
         sponsorCode: pendingCode,

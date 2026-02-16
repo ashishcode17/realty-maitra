@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { compareOTP, generateToken, generateSponsorCode } from '@/lib/auth'
+import { compareOTP, generateToken, generateShortInviteCode } from '@/lib/auth'
 import { getRoleRank } from '@/lib/roles'
 import { handleApiError } from '@/lib/error-handler'
 import { checkOtpVerifyRateLimit } from '@/lib/rateLimit'
@@ -99,8 +99,11 @@ export async function POST(request: NextRequest) {
     const invitedByUserId = pendingUser.sponsorId ?? null
     const joinTimestamp = new Date()
 
-    let newUser: { id: string; name: string; email: string; role: string; sponsorCode: string | null }
-    for (let attempt = 0; attempt < 5; attempt++) {
+    const role = pendingUser.role ?? 'BDM'
+    const rank = pendingUser.rank ?? 'BDM'
+
+    let newUser: { id: string; name: string; email: string; role: string; rank: string; sponsorCode: string | null }
+    for (let attempt = 0; attempt < 10; attempt++) {
       try {
         newUser = await prisma.user.create({
           data: {
@@ -109,11 +112,12 @@ export async function POST(request: NextRequest) {
             phone: pendingUser.phone,
             city: pendingUser.city,
             passwordHash: pendingUser.passwordHash,
-            role: 'BDM',
-            roleRank: getRoleRank('BDM'),
+            role,
+            roleRank: getRoleRank(role),
             sponsorId: pendingUser.sponsorId,
             path: pendingUser.path ?? [],
-            sponsorCode: generateSponsorCode(),
+            rank,
+            sponsorCode: generateShortInviteCode(5),
             sponsorCodeUsed: invitedBySponsorCode,
             status: 'ACTIVE',
             emailVerified: true,
@@ -125,7 +129,7 @@ export async function POST(request: NextRequest) {
         break
       } catch (e: unknown) {
         const isUniqueViolation = (e as { code?: string })?.code === 'P2002'
-        if (isUniqueViolation && attempt < 4) continue
+        if (isUniqueViolation && attempt < 9) continue
         throw e
       }
     }
@@ -160,6 +164,7 @@ export async function POST(request: NextRequest) {
           name: newUser.name,
           email: newUser.email,
           role: newUser.role,
+          rank: newUser.rank,
           sponsorCode: newUser.sponsorCode ?? '',
         },
       },
