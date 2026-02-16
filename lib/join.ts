@@ -4,7 +4,6 @@
  */
 
 import { prisma } from './prisma'
-import { ensureDemoSponsorExists } from './ensure-demo-sponsor'
 
 export const JOIN_ERROR_CODES = {
   INVALID_INVITE_CODE: 'INVALID_SPONSOR_CODE',
@@ -39,31 +38,10 @@ export async function resolveSponsorFromInviteCode(
   const code = normalizeInviteCode(inviteCode)
   if (!code) return null
 
-  let sponsor: { id: string; path: string[] | null; sponsorCode: string | null; name: string; role: string; rank: string } | null =
-    await prisma.user.findFirst({
-      where: { sponsorCode: code, status: 'ACTIVE' },
-      select: { id: true, path: true, sponsorCode: true, name: true, role: true, rank: true },
-    })
-
-  if (!sponsor && code === 'DEMO1234') {
-    const demo = await ensureDemoSponsorExists()
-    if (demo) {
-      const u = await prisma.user.findFirst({
-        where: { sponsorCode: code, status: 'ACTIVE' },
-        select: { id: true, path: true, sponsorCode: true, name: true, role: true, rank: true },
-      })
-      sponsor = u
-    }
-  }
-
-  if (!sponsor && process.env.FIRST_SPONSOR_CODE?.trim().toUpperCase() === code) {
-    const count = await prisma.user.count({
-      where: { status: 'ACTIVE', sponsorCode: { not: null } },
-    })
-    if (count === 0) {
-      return { id: '', path: [], sponsorCode: code, name: '', role: 'ADMIN', rank: 'ADMIN' }
-    }
-  }
+  const sponsor = await prisma.user.findFirst({
+    where: { sponsorCode: code, status: 'ACTIVE' },
+    select: { id: true, path: true, sponsorCode: true, name: true, role: true, rank: true },
+  })
 
   if (!sponsor) return null
   return {

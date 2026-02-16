@@ -57,6 +57,7 @@ export default function RegisterPage() {
   const [inviteContext, setInviteContext] = useState<{
     sponsorName: string;
     sponsorCode: string;
+    sponsorRankLabel: string;
     allowedRanks: { value: string; label: string }[];
   } | null>(null);
   const [otp, setOtp] = useState('');
@@ -65,12 +66,11 @@ export default function RegisterPage() {
   const [validatingInvite, setValidatingInvite] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [successUser, setSuccessUser] = useState<{ name: string; rank: string; sponsorCode: string; sponsorName?: string } | null>(null);
-  const [showInviteForm, setShowInviteForm] = useState(false);
 
   useEffect(() => {
-    fetch('/api/auth/registration-context')
+    fetch('/api/bootstrap-status')
       .then((r) => r.json())
-      .then((d) => setIsFirstUser(d.isFirstUser === true))
+      .then((d) => setIsFirstUser(d.hasUsers === false))
       .catch(() => setIsFirstUser(false));
   }, []);
 
@@ -90,12 +90,13 @@ export default function RegisterPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        toast.error(data.error || 'Invalid invite code.');
+        toast.error('Invalid invite code.');
         return;
       }
       setInviteContext({
         sponsorName: data.sponsorName,
         sponsorCode: data.sponsorCode,
+        sponsorRankLabel: data.sponsorRankLabel ?? data.sponsorRank ?? '',
         allowedRanks: data.allowedRanks || [],
       });
       setFormData((f) => ({ ...f, sponsorCode: code, rank: '' }));
@@ -187,8 +188,8 @@ export default function RegisterPage() {
     );
   }
 
-  const showRootForm = isFirstUser && !showInviteForm && rootStep === 'root-form' && step === 'enter-invite';
-  const showInviteStep = (!isFirstUser || showInviteForm) && step === 'enter-invite';
+  const showRootForm = isFirstUser && rootStep === 'root-form' && step === 'enter-invite';
+  const showInviteStep = !isFirstUser && step === 'enter-invite';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4 sm:p-6">
@@ -235,11 +236,6 @@ export default function RegisterPage() {
                 </Button>
                 <p className="text-xs text-slate-500 text-center">This step can only be completed once.</p>
               </form>
-              {isFirstUser && (
-                <p className="mt-4 text-center text-sm text-slate-400">
-                  Already have an invite code? <button type="button" onClick={() => setShowInviteForm(true)} className="text-emerald-400 hover:underline">Join with invite code</button>
-                </p>
-              )}
             </CardContent>
           </Card>
         )}
@@ -260,11 +256,6 @@ export default function RegisterPage() {
                   {validatingInvite ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Continue
                 </Button>
               </form>
-              {isFirstUser && (
-                <p className="mt-4 text-center text-sm text-slate-400">
-                  First time? <button type="button" onClick={() => setShowInviteForm(false)} className="text-emerald-400 hover:underline">Create root admin</button>
-                </p>
-              )}
             </CardContent>
           </Card>
         )}
@@ -276,10 +267,11 @@ export default function RegisterPage() {
               <CardDescription className="text-slate-300">Your available positions are based on your sponsor&apos;s rank.</CardDescription>
             </CardHeader>
             <CardContent className="text-white space-y-4">
-              <div className="p-3 rounded-lg bg-slate-700/50 border border-slate-600">
-                <p className="text-sm text-slate-400">You are joining under:</p>
+              <div className="p-4 rounded-lg bg-slate-700/50 border border-slate-600 space-y-1">
+                <p className="text-sm font-medium text-slate-400">Organization Sponsor</p>
                 <p className="font-semibold text-white">{inviteContext.sponsorName}</p>
-                <p className="text-sm text-slate-300">Sponsor Code: <span className="font-mono">{inviteContext.sponsorCode}</span></p>
+                <p className="text-sm text-slate-300">Position: {inviteContext.sponsorRankLabel}</p>
+                <p className="text-sm text-slate-300">Invite Code: <span className="font-mono">{inviteContext.sponsorCode}</span></p>
               </div>
               <form onSubmit={(e) => { e.preventDefault(); setStep('account-details'); }}>
                 <div className="space-y-2">
@@ -399,7 +391,7 @@ export default function RegisterPage() {
           </Card>
         )}
 
-        {showInviteStep && (
+        {(showRootForm || showInviteStep) && (
           <div className="mt-6 text-center">
             <p className="text-slate-400 text-sm">Already have an account? <Link href="/login" className="text-emerald-400 hover:underline">Sign in</Link></p>
           </div>

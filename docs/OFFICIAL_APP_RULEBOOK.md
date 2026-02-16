@@ -14,9 +14,17 @@ This document defines the **official functioning rules** of the app. All code mu
 
 ### A2) Invalid or expired code
 
-- If the code does not match any ACTIVE user’s `sponsorCode`, registration is **rejected** with a clear error: **invalid_invite_code** (or `INVALID_SPONSOR_CODE` in existing code).
+- If the code does not match any ACTIVE user’s `sponsorCode`, registration is **rejected** with a clear error: **invalid_invite_code** (or `INVALID_SPONSOR_CODE`). UI shows: “Invalid invite code.”
 - There is no concept of “expired” invite code: if the sponsor is ACTIVE, the code is valid. If the sponsor is not ACTIVE, the code is invalid.
-- **First-user bootstrap**: If the database has no ACTIVE user with a sponsor code, the system may accept a one-time code from environment (`FIRST_SPONSOR_CODE`) or a built-in demo code (e.g. DEMO1234) only when explicitly configured. This is the only exception to “code must belong to an ACTIVE user.”
+- **No demo or hardcoded sponsor**: Sponsor preview (name, rank, code) comes **only** from the database after successful invite validation. There is no default invite code (e.g. DEMO1234) or placeholder sponsor name (e.g. “John Director”) in the registration flow.
+
+### A2b) Bootstrap (first user) and invite-only registration
+
+- **Invite code is required only on the registration screen.** Login never asks for an invite code; users sign in with email/password or OTP only.
+- **Bootstrap rule (server-side):**
+  - If the database has **0 users** (excluding pending placeholder records): the app allows creation of the **first account** without any invite code. This first account becomes SUPER_ADMIN/ADMIN and root. This is the only time invite code is bypassed. Enforcement: server checks user count in DB.
+  - If the database has **1+ users**: registration **must** require a valid invite code, validated server-side. No invite code = no registration.
+- **Bootstrap status**: A public endpoint `GET /api/bootstrap-status` returns `{ hasUsers: boolean }` so the registration page can show either “Create Root Admin” (when `hasUsers === false`) or “Enter invite code” (when `hasUsers === true`).
 
 ### A3) Changing sponsor later
 
