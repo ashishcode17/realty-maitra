@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/middleware'
 import { prisma } from '@/lib/prisma'
-import path from 'path'
+import path from 'node:path'
 import fs from 'fs/promises'
 
 export async function GET(

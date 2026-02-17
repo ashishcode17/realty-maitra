@@ -3,7 +3,7 @@ import { requireAdmin } from '@/lib/middleware'
 import { prisma } from '@/lib/prisma'
 import { handleApiError } from '@/lib/error-handler'
 import fs from 'fs/promises'
-import path from 'path'
+import path from 'node:path'
 import { randomUUID } from 'crypto'
 
 const MAX_FILE_SIZE = 25 * 1024 * 1024 // 25MB

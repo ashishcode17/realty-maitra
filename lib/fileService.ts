@@ -1,5 +1,5 @@
 import fs from 'fs/promises'
-import path from 'path'
+import path from 'node:path'
 import { randomUUID } from 'crypto'
 
 const UPLOAD_BASE_DIR = path.join(process.cwd(), 'uploads')

@@ -3,7 +3,7 @@ import { requireAdmin } from '@/lib/middleware'
 import { prisma } from '@/lib/prisma'
 import { handleApiError } from '@/lib/error-handler'
 import fs from 'fs/promises'
-import path from 'path'
+import path from 'node:path'
 
 // GET - List all training content (admin view)
 export async function GET(request: NextRequest) {

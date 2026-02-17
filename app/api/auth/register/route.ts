@@ -16,7 +16,7 @@ import {
   JOIN_ERROR_CODES,
 } from '@/lib/join'
 import { nanoid } from 'nanoid'
-import path from 'path'
+import path from 'node:path'
 import fs from 'fs/promises'
 import { randomUUID } from 'crypto'
 
@@ -24,7 +24,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MIN_PASSWORD_LENGTH = 8
 const OTP_EXPIRY_MS = 10 * 60 * 1000
 const isDev = process.env.NODE_ENV !== 'production'
-const GOVT_ID_DIR = path.join(process.cwd(), 'uploads', 'govt-ids')
+const GOVT_ID_DIR = path.join(`${process.cwd()}/uploads/govt-ids`)
 const GOVT_ID_MAX_SIZE = 2 * 1024 * 1024 // 2MB
 const GOVT_ID_ALLOWED_TYPES = ['image/jpeg', 'image/png']
 
@@ -215,8 +215,8 @@ export async function POST(request: NextRequest) {
     if (govtIdFile) {
       const ext = govtIdFile.type === 'image/png' ? '.png' : '.jpg'
       const fileName = `${pendingUser.id}_${randomUUID()}${ext}`
-      const filePath = path.join(`${GOVT_ID_DIR}${path.sep}${fileName}`)
-      const relativePath = path.join(`uploads${path.sep}govt-ids${path.sep}${fileName}`).replace(/\\/g, '/')
+      const filePath = path.join(`${GOVT_ID_DIR}/${fileName}`)
+      const relativePath = (`uploads/govt-ids/${fileName}`).replace(/\\/g, '/')
       await fs.mkdir(GOVT_ID_DIR, { recursive: true })
       const buffer = Buffer.from(await govtIdFile.arrayBuffer())
       await fs.writeFile(filePath, buffer)
