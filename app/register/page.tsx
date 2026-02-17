@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Eye, EyeOff, CheckCircle2, Loader2, Copy } from 'lucide-react';
+import { Eye, EyeOff, CheckCircle2, Loader2 } from 'lucide-react'
+import { InviteCodeField } from '@/components/InviteCodeField';
 import Link from 'next/link';
 import { brand } from '@/lib/brand';
 import { BrandLogo } from '@/components/BrandLogo';
@@ -32,6 +33,12 @@ function getRegisterError(data: { error?: string; message?: string; code?: strin
       return 'OTP expired. Request a new one.';
     case 'INVALID_OTP':
       return 'Invalid OTP. Check and try again.';
+    case 'GOVT_ID_REQUIRED':
+      return 'Govt ID image is required to register.';
+    case 'GOVT_ID_TOO_LARGE':
+      return 'Govt ID file is too large. Maximum size is 2MB.';
+    case 'GOVT_ID_INVALID_TYPE':
+      return 'Invalid file type. Only JPG and PNG are allowed for Govt ID.';
     default:
       return data.message || data.error || 'Registration failed.';
   }
@@ -65,7 +72,8 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [validatingInvite, setValidatingInvite] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [successUser, setSuccessUser] = useState<{ name: string; rank: string; sponsorCode: string; sponsorName?: string } | null>(null);
+  const [successUser, setSuccessUser] = useState<{ name: string; rank: string; sponsorCode: string; sponsorName?: string; govtIdUploaded?: boolean } | null>(null);
+  const [govtIdFile, setGovtIdFile] = useState<File | null>(null);
 
   useEffect(() => {
     fetch('/api/bootstrap-status')
@@ -110,23 +118,51 @@ export default function RegisterPage() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    const isRoot = rootStep === 'root-form' && isFirstUser;
+    if (!isRoot && !govtIdFile) {
+      toast.error('Govt ID image is required.');
+      return;
+    }
+    if (!isRoot && govtIdFile && govtIdFile.size > 2 * 1024 * 1024) {
+      toast.error('Govt ID file must be 2MB or smaller.');
+      return;
+    }
+    if (!isRoot && govtIdFile) {
+      const t = (govtIdFile.type ?? '').toLowerCase();
+      if (t !== 'image/jpeg' && t !== 'image/png') {
+        toast.error('Govt ID must be JPG or PNG.');
+        return;
+      }
+    }
     setLoading(true);
     try {
-      const payload: Record<string, unknown> = {
-        name: formData.name.trim(),
-        email: formData.email.trim().toLowerCase(),
-        phone: formData.phone.trim(),
-        city: formData.city.trim() || undefined,
-        password: formData.password,
-        sponsorCode: step === 'account-details' ? formData.sponsorCode : undefined,
-      };
-      if (rootStep === 'root-form' && isFirstUser) {
-        payload.rootAdmin = true;
+      let body: string | FormData;
+      let headers: Record<string, string> = {};
+      if (isRoot) {
+        body = JSON.stringify({
+          name: formData.name.trim(),
+          email: formData.email.trim().toLowerCase(),
+          phone: formData.phone.trim(),
+          city: formData.city.trim() || undefined,
+          password: formData.password,
+          rootAdmin: true,
+        });
+        headers['Content-Type'] = 'application/json';
+      } else {
+        const fd = new FormData();
+        fd.append('name', formData.name.trim());
+        fd.append('email', formData.email.trim().toLowerCase());
+        fd.append('phone', formData.phone.trim());
+        fd.append('city', formData.city.trim());
+        fd.append('password', formData.password);
+        fd.append('sponsorCode', formData.sponsorCode);
+        if (govtIdFile) fd.append('govtId', govtIdFile);
+        body = fd;
       }
       const response = await fetch('/api/auth/register', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        headers,
+        body,
       });
       const data = await response.json();
       if (!response.ok) {
@@ -165,6 +201,7 @@ export default function RegisterPage() {
         rank: data.user?.rank || formData.rank || '—',
         sponsorCode: data.user?.sponsorCode || '',
         sponsorName: inviteContext?.sponsorName,
+        govtIdUploaded: !!inviteContext,
       });
       if (rootStep === 'otp') setRootStep('success');
       else setStep('success');
@@ -311,6 +348,19 @@ export default function RegisterPage() {
                     </button>
                   </div>
                 </div>
+                {!isFirstUser && (
+                  <div className="space-y-2">
+                    <Label className="text-slate-300">Govt ID (JPG/PNG, max 2MB) *</Label>
+                    <input
+                      type="file"
+                      accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+                      required={!isFirstUser}
+                      className="block w-full text-sm text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-slate-700 file:text-white"
+                      onChange={(e) => setGovtIdFile(e.target.files?.[0] ?? null)}
+                    />
+                    <p className="text-xs text-slate-500">Required. Max 2MB. JPG or PNG only.</p>
+                  </div>
+                )}
                 <Button type="submit" disabled={loading} className="w-full min-h-[44px] bg-emerald-600 hover:bg-emerald-700 text-white">
                   {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending OTP...</> : 'Create My Account'}
                 </Button>
@@ -356,18 +406,17 @@ export default function RegisterPage() {
               <CardDescription className="text-slate-300">
                 You have successfully joined under {successUser.sponsorName ? `${successUser.sponsorName}` : 'Root Admin'}.<br />
                 Your Position: <strong>{successUser.rank}</strong>
+                {successUser.govtIdUploaded && <><br />Govt ID: Uploaded ✅</>}
               </CardDescription>
             </CardHeader>
             <CardContent className="text-white space-y-6">
               <div>
-                <p className="text-sm text-slate-400 mb-1">Your Personal Invite Code</p>
-                <div className="flex items-center gap-2">
-                  <code className="px-4 py-2 bg-slate-900 rounded font-mono text-emerald-400 text-lg">{successUser.sponsorCode || '—'}</code>
-                  <Button size="sm" onClick={() => { if (successUser.sponsorCode) { navigator.clipboard.writeText(successUser.sponsorCode); toast.success('Copied!'); } }} className="bg-emerald-600 hover:bg-emerald-700">
-                    <Copy className="h-4 w-4 mr-1" /> Copy
-                  </Button>
-                </div>
-                <p className="text-xs text-slate-500 mt-2">Share this code to build your team.</p>
+                <InviteCodeField
+                  code={successUser.sponsorCode || null}
+                  label="Your Personal Invite Code"
+                  helperText="Share this code to build your team."
+                  size="lg"
+                />
               </div>
               <Button onClick={handleSuccessContinue} className="w-full min-h-[44px] bg-emerald-600 hover:bg-emerald-700 text-white">Go to Dashboard</Button>
             </CardContent>

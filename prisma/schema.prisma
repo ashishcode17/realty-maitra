@@ -227,6 +227,33 @@ model PayoutLedger {
   @@index([bookingId])
 }
 
+// Append-only join/exit ledger for Admin/Director. Immutable events.
+model UserLedger {
+  id              String   @id @default(cuid())
+  userId          String   // User this event is about
+  eventType       String   // JOINED | DELETED | DEACTIVATED | REACTIVATED
+  timestamp       DateTime @default(now())
+  performedBy     String?  // Admin/Director id if applicable
+  name            String?
+  email           String?
+  phone           String?
+  city            String?
+  state           String?
+  rank            String?
+  role            String?
+  treeId          String?
+  profileImageUrl String?
+  govtIdImageUrl  String?
+  inviterUserId   String?
+  inviterCode     String?
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([eventType])
+  @@index([timestamp])
+  @@index([treeId])
+}
+
 model Project {
   id                String      @id @default(cuid())
   name              String

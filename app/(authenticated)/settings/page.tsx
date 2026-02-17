@@ -23,8 +23,8 @@ import {
   LogOut,
   Smartphone,
   Lock,
-  Copy,
 } from 'lucide-react'
+import { InviteCodeField } from '@/components/InviteCodeField'
 import { toast } from 'sonner'
 import { getRankLabel } from '@/lib/ranks'
 
@@ -438,25 +438,12 @@ export default function SettingsPage() {
 
               <div className="border-t border-slate-700 pt-6">
                 <h3 className="text-white font-semibold mb-2">Invite Details</h3>
-                <p className="text-slate-400 text-sm mb-2">Your Invite Code: <span className="font-mono text-emerald-400">{user?.sponsorCode ?? '—'}</span></p>
-                <div className="flex items-center gap-2">
-                  <code className="px-3 py-1.5 bg-slate-900 rounded font-mono text-emerald-400">{user?.sponsorCode ?? '—'}</code>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="border-slate-600 text-slate-300"
-                    onClick={() => {
-                      const code = user?.sponsorCode || ''
-                      if (code) {
-                        navigator.clipboard.writeText(code)
-                        toast.success('Invite code copied')
-                      }
-                    }}
-                  >
-                    <Copy className="h-4 w-4 mr-1" /> Copy
-                  </Button>
-                </div>
-                <p className="text-slate-500 text-xs mt-2">This code is permanent and cannot be changed.</p>
+                <InviteCodeField
+                  code={user?.sponsorCode ?? null}
+                  label="Your Invite Code"
+                  helperText="This code is permanent and cannot be changed."
+                  size="sm"
+                />
               </div>
               <Button onClick={handleSaveProfile} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700">
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} Save profile

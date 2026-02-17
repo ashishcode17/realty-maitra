@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
-import { Users, Building2, Award, BookOpen, FileText, TrendingUp } from 'lucide-react'
+import { Users, Building2, Award, BookOpen, FileText, TrendingUp, ClipboardList, CircleDot } from 'lucide-react'
 import Link from 'next/link'
 
 export default function AdminDashboard() {
@@ -192,6 +192,30 @@ export default function AdminDashboard() {
                   <h3 className="text-xl font-semibold text-white ml-4">Audit Log</h3>
                 </div>
                 <p className="text-slate-400">View critical actions and changes</p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link href="/admin/ledger">
+            <Card className="bg-slate-800 border-slate-700 hover:border-emerald-600 transition cursor-pointer">
+              <CardContent className="pt-6">
+                <div className="flex items-center mb-4">
+                  <ClipboardList className="w-8 h-8 text-cyan-500" />
+                  <h3 className="text-xl font-semibold text-white ml-4">Join/Exit Ledger</h3>
+                </div>
+                <p className="text-slate-400">Official register of joins, deactivations, exports</p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link href="/admin/online">
+            <Card className="bg-slate-800 border-slate-700 hover:border-emerald-600 transition cursor-pointer">
+              <CardContent className="pt-6">
+                <div className="flex items-center mb-4">
+                  <CircleDot className="w-8 h-8 text-emerald-500" />
+                  <h3 className="text-xl font-semibold text-white ml-4">Online Users</h3>
+                </div>
+                <p className="text-slate-400">Who is active now (green dot), last seen</p>
               </CardContent>
             </Card>
           </Link>

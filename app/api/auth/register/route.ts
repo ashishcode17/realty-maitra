@@ -16,11 +16,17 @@ import {
   JOIN_ERROR_CODES,
 } from '@/lib/join'
 import { nanoid } from 'nanoid'
+import path from 'path'
+import fs from 'fs/promises'
+import { randomUUID } from 'crypto'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MIN_PASSWORD_LENGTH = 8
 const OTP_EXPIRY_MS = 10 * 60 * 1000
 const isDev = process.env.NODE_ENV !== 'production'
+const GOVT_ID_DIR = path.join(process.cwd(), 'uploads', 'govt-ids')
+const GOVT_ID_MAX_SIZE = 2 * 1024 * 1024 // 2MB
+const GOVT_ID_ALLOWED_TYPES = ['image/jpeg', 'image/png']
 
 export async function POST(request: NextRequest) {
   try {
@@ -39,14 +45,39 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const body = await request.json().catch(() => ({}))
-    const { name, email, phone, city, password, sponsorCode, rootAdmin } = body
-    const nameStr = typeof name === 'string' ? name.trim() : ''
-    const emailStr = typeof email === 'string' ? email.trim().toLowerCase() : ''
-    const phoneStr = typeof phone === 'string' ? phone.trim() : ''
-    const passwordStr = typeof password === 'string' ? password : ''
-    const sponsorCodeStr = normalizeInviteCode(sponsorCode)
-    const isRootPath = rootAdmin === true || rootAdmin === 'true'
+    const contentType = request.headers.get('content-type') ?? ''
+    let nameStr: string
+    let emailStr: string
+    let phoneStr: string
+    let cityStr: string
+    let passwordStr: string
+    let sponsorCodeStr: string
+    let isRootPath: boolean
+    let govtIdFile: File | null = null
+
+    if (contentType.includes('multipart/form-data')) {
+      const formData = await request.formData()
+      const get = (k: string) => formData.get(k)
+      nameStr = typeof get('name') === 'string' ? String(get('name')).trim() : ''
+      emailStr = typeof get('email') === 'string' ? String(get('email')).trim().toLowerCase() : ''
+      phoneStr = typeof get('phone') === 'string' ? String(get('phone')).trim() : ''
+      cityStr = typeof get('city') === 'string' ? String(get('city')).trim() : ''
+      passwordStr = typeof get('password') === 'string' ? String(get('password')) : ''
+      sponsorCodeStr = normalizeInviteCode(String(get('sponsorCode') ?? ''))
+      isRootPath = get('rootAdmin') === true || get('rootAdmin') === 'true'
+      const file = formData.get('govtId') ?? formData.get('file')
+      if (file instanceof File && file.size > 0) govtIdFile = file
+    } else {
+      const body = await request.json().catch(() => ({}))
+      const { name, email, phone, city, password, sponsorCode, rootAdmin } = body
+      nameStr = typeof name === 'string' ? name.trim() : ''
+      emailStr = typeof email === 'string' ? email.trim().toLowerCase() : ''
+      phoneStr = typeof phone === 'string' ? phone.trim() : ''
+      cityStr = typeof city === 'string' ? city.trim() : ''
+      passwordStr = typeof password === 'string' ? password : ''
+      sponsorCodeStr = normalizeInviteCode(sponsorCode)
+      isRootPath = rootAdmin === true || rootAdmin === 'true'
+    }
 
     const firstUserAllowed = await isFirstUserAllowed()
     if (isRootPath && !firstUserAllowed) {
@@ -132,6 +163,28 @@ export async function POST(request: NextRequest) {
       rank = 'BDM'
     }
 
+    if (!isRootPath && !govtIdFile) {
+      return NextResponse.json(
+        { error: 'Govt ID image is required to register.', code: 'GOVT_ID_REQUIRED' },
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+    if (govtIdFile) {
+      if (govtIdFile.size > GOVT_ID_MAX_SIZE) {
+        return NextResponse.json(
+          { error: 'Govt ID file too large. Maximum size is 2MB.', code: 'GOVT_ID_TOO_LARGE' },
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        )
+      }
+      const mime = (govtIdFile.type ?? '').toLowerCase()
+      if (!GOVT_ID_ALLOWED_TYPES.includes(mime)) {
+        return NextResponse.json(
+          { error: 'Invalid Govt ID file type. Only JPG and PNG are allowed.', code: 'GOVT_ID_INVALID_TYPE' },
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        )
+      }
+    }
+
     await prisma.user.deleteMany({ where: { email: `pending_${emailStr}` } })
     await prisma.otpVerification.deleteMany({ where: { identifier: emailStr, purpose: 'REGISTER' } })
 
@@ -145,7 +198,7 @@ export async function POST(request: NextRequest) {
         name: nameStr,
         email: `pending_${emailStr}`,
         phone: phoneStr,
-        city: typeof city === 'string' ? city.trim() || null : null,
+        city: cityStr || null,
         passwordHash: hashPassword(passwordStr),
         role,
         roleRank: getRoleRank(role),
@@ -158,6 +211,20 @@ export async function POST(request: NextRequest) {
         sponsorCodeUsed: !isFirstUser && sponsor ? sponsor.sponsorCode : null,
       },
     })
+
+    if (govtIdFile) {
+      const ext = govtIdFile.type === 'image/png' ? '.png' : '.jpg'
+      const fileName = `${pendingUser.id}_${randomUUID()}${ext}`
+      const filePath = path.join(GOVT_ID_DIR, fileName)
+      const relativePath = path.join('uploads', 'govt-ids', fileName).replace(/\\/g, '/')
+      await fs.mkdir(GOVT_ID_DIR, { recursive: true })
+      const buffer = Buffer.from(await govtIdFile.arrayBuffer())
+      await fs.writeFile(filePath, buffer)
+      await prisma.user.update({
+        where: { id: pendingUser.id },
+        data: { idImageUrl: relativePath, idImageUploadedAt: new Date() },
+      })
+    }
 
     await prisma.otpVerification.create({
       data: {

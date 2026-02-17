@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/middleware'
 import { updateSponsorAndRecomputePaths } from '@/lib/tree'
 import { createAuditLog, getClientIp } from '@/lib/audit'
+import { writeUserLedgerEvent } from '@/lib/userLedger'
 
 /** GET: Admin get single user (with sponsor info) */
 export async function GET(
@@ -92,6 +93,16 @@ export async function PATCH(
     }
 
     if (Object.keys(updateData).length > 0) {
+      const nonActiveStatuses = ['DEACTIVATED', 'INACTIVE', 'SUSPENDED']
+      const wasStatusChange = status !== undefined
+      let snapshotForLedger: { name: string; email: string; phone: string | null; city: string | null; rank: string; role: string; treeId: string | null; profilePhotoUrl: string | null; idImageUrl: string | null } | null = null
+      if (wasStatusChange) {
+        const u = await prisma.user.findUnique({
+          where: { id },
+          select: { name: true, email: true, phone: true, city: true, rank: true, role: true, treeId: true, profilePhotoUrl: true, idImageUrl: true },
+        })
+        if (u) snapshotForLedger = u
+      }
       await prisma.user.update({
         where: { id },
         data: updateData,
@@ -105,6 +116,27 @@ export async function PATCH(
           metaJson: { updates: updateData },
           ip: getClientIp(request),
         })
+      }
+      if (wasStatusChange && snapshotForLedger) {
+        const eventType = nonActiveStatuses.includes(status) ? 'DEACTIVATED' : (status === 'ACTIVE' ? 'REACTIVATED' : null)
+        if (eventType) {
+          await writeUserLedgerEvent({
+            userId: id,
+            eventType,
+            snapshot: {
+              name: snapshotForLedger.name,
+              email: snapshotForLedger.email,
+              phone: snapshotForLedger.phone,
+              city: snapshotForLedger.city,
+              rank: snapshotForLedger.rank,
+              role: snapshotForLedger.role,
+              treeId: snapshotForLedger.treeId,
+              profileImageUrl: snapshotForLedger.profilePhotoUrl,
+              govtIdImageUrl: snapshotForLedger.idImageUrl,
+            },
+            performedBy: admin.userId,
+          }).catch((err) => console.error('Ledger write error:', err))
+        }
       }
     }
 

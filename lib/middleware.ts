@@ -57,3 +57,13 @@ export async function requireAdmin(request: NextRequest) {
   
   return user
 }
+
+/** Admin or Director only. Use for ledger, online users, exports, govt ID download. */
+export async function requireAdminOrDirector(request: NextRequest) {
+  const user = await authenticateUser(request)
+  const allowed = user && (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN' || user.role === 'DIRECTOR')
+  if (!allowed) {
+    return NextResponse.json({ error: 'Admin or Director access required' }, { status: 403 })
+  }
+  return user
+}

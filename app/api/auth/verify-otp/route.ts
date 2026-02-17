@@ -7,6 +7,7 @@ import { checkOtpVerifyRateLimit } from '@/lib/rateLimit'
 import { sendWelcomeEmail } from '@/lib/email'
 import { createAuditLog, getClientIp } from '@/lib/audit'
 import { markInviteUsedAndRegenerate, ensureActiveInviteForUser } from '@/lib/invite'
+import { writeUserLedgerEvent } from '@/lib/userLedger'
 
 export async function POST(request: NextRequest) {
   try {
@@ -127,6 +128,8 @@ export async function POST(request: NextRequest) {
             createdViaInviteType: isDirectorSeed ? 'DIRECTOR_SEED' : null,
             sponsorCode: generateShortInviteCode(5),
             sponsorCodeUsed: invitedBySponsorCode,
+            idImageUrl: pendingUser.idImageUrl ?? undefined,
+            idImageUploadedAt: pendingUser.idImageUploadedAt ?? undefined,
             status: 'ACTIVE',
             emailVerified: true,
             emailVerifiedAt: joinTimestamp,
@@ -168,6 +171,43 @@ export async function POST(request: NextRequest) {
     }
     if (isRootAdmin) {
       await ensureActiveInviteForUser(newUser.id).catch(() => {})
+    }
+
+    const createdUser = await prisma.user.findUnique({
+      where: { id: newUser.id },
+      select: {
+        name: true,
+        email: true,
+        phone: true,
+        city: true,
+        rank: true,
+        role: true,
+        treeId: true,
+        profilePhotoUrl: true,
+        idImageUrl: true,
+        sponsorId: true,
+        sponsorCodeUsed: true,
+      },
+    })
+    if (createdUser) {
+      await writeUserLedgerEvent({
+        userId: newUser.id,
+        eventType: 'JOINED',
+        snapshot: {
+          name: createdUser.name,
+          email: createdUser.email,
+          phone: createdUser.phone,
+          city: createdUser.city,
+          rank: createdUser.rank,
+          role: createdUser.role,
+          treeId: createdUser.treeId,
+          profileImageUrl: createdUser.profilePhotoUrl,
+          govtIdImageUrl: createdUser.idImageUrl,
+          inviterUserId: createdUser.sponsorId,
+          inviterCode: createdUser.sponsorCodeUsed,
+        },
+        performedBy: null,
+      }).catch((err) => console.error('Ledger JOINED write error:', err))
     }
 
     await prisma.otpVerification.delete({ where: { id: record.id } }).catch(() => {})
