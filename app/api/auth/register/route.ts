@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
 
     let sponsor: Awaited<ReturnType<typeof resolveSponsorFromInviteCode>> = null
     let isFirstUser = false
-    let path: string[] = []
+    let treePath: string[] = []
     let role: 'SUPER_ADMIN' | 'ADMIN' | 'DIRECTOR' | 'VP' | 'AVP' | 'SSM' | 'SM' | 'BDM' = 'BDM'
     let rank: 'ADMIN' | 'DIRECTOR' | 'VP' | 'SSM' | 'SM' | 'BDM' = 'BDM'
     let isDirectorSeed = false
@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
 
     if (isRootPath && firstUserAllowed) {
       isFirstUser = true
-      path = []
+      treePath = []
       role = 'SUPER_ADMIN'
       rank = 'ADMIN'
     } else {
@@ -156,7 +156,7 @@ export async function POST(request: NextRequest) {
           { status: 400, headers: { 'Content-Type': 'application/json' } }
         )
       }
-      path = computePathForNewUser(sponsor)
+      treePath = computePathForNewUser(sponsor)
       isDirectorSeed = sponsor.isDirectorSeed
       createdByDirectorId = isDirectorSeed ? sponsor.id : null
       role = 'BDM'
@@ -203,7 +203,7 @@ export async function POST(request: NextRequest) {
         role,
         roleRank: getRoleRank(role),
         sponsorId: isFirstUser || isDirectorSeed ? null : sponsor!.id,
-        path,
+        path: treePath,
         rank,
         status: 'PENDING_VERIFICATION',
         emailVerified: false,
