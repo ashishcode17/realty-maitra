@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
       cityStr = typeof get('city') === 'string' ? String(get('city')).trim() : ''
       passwordStr = typeof get('password') === 'string' ? String(get('password')) : ''
       sponsorCodeStr = normalizeInviteCode(String(get('sponsorCode') ?? ''))
-      isRootPath = get('rootAdmin') === true || get('rootAdmin') === 'true'
+      isRootPath = String(get('rootAdmin') ?? '') === 'true'
       const file = formData.get('govtId') ?? formData.get('file')
       if (file instanceof File && file.size > 0) govtIdFile = file
     } else {
