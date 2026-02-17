@@ -6,6 +6,7 @@ import { handleApiError } from '@/lib/error-handler'
 import { checkOtpVerifyRateLimit } from '@/lib/rateLimit'
 import { sendWelcomeEmail } from '@/lib/email'
 import { createAuditLog, getClientIp } from '@/lib/audit'
+import { markInviteUsedAndRegenerate, ensureActiveInviteForUser } from '@/lib/invite'
 
 export async function POST(request: NextRequest) {
   try {
@@ -67,13 +68,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    let meta: { pendingUserId?: string } = {}
+    let meta: { pendingUserId?: string; isDirectorSeed?: boolean; createdByDirectorId?: string | null } = {}
     try {
       meta = record.meta ? JSON.parse(record.meta) : {}
     } catch {
       meta = {}
     }
     const pendingUserId = meta.pendingUserId
+    const isDirectorSeed = meta.isDirectorSeed === true
+    const createdByDirectorId = meta.createdByDirectorId ?? null
     if (!pendingUserId) {
       return NextResponse.json(
         { error: 'Registration data not found', code: 'INVALID_STATE' },
@@ -95,14 +98,15 @@ export async function POST(request: NextRequest) {
     }
 
     const actualEmail = pendingUser.email.replace(/^pending_/, '')
-    const invitedBySponsorCode = pendingUser.sponsor?.sponsorCode ?? null
-    const invitedByUserId = pendingUser.sponsorId ?? null
+    const invitedBySponsorCode = pendingUser.sponsorCodeUsed ?? pendingUser.sponsor?.sponsorCode ?? null
+    const invitedByUserId = pendingUser.sponsorId ?? createdByDirectorId
     const joinTimestamp = new Date()
 
     const role = pendingUser.role ?? 'BDM'
     const rank = pendingUser.rank ?? 'BDM'
+    const isRootAdmin = role === 'SUPER_ADMIN' || rank === 'ADMIN'
 
-    let newUser: { id: string; name: string; email: string; role: string; rank: string; sponsorCode: string | null }
+    let newUser: { id: string; name: string; email: string; role: string; rank: string; sponsorCode: string | null; performanceRank?: string }
     for (let attempt = 0; attempt < 10; attempt++) {
       try {
         newUser = await prisma.user.create({
@@ -117,6 +121,10 @@ export async function POST(request: NextRequest) {
             sponsorId: pendingUser.sponsorId,
             path: pendingUser.path ?? [],
             rank,
+            performanceRank: 'R5',
+            treeId: null,
+            createdByDirectorId: isDirectorSeed ? createdByDirectorId : null,
+            createdViaInviteType: isDirectorSeed ? 'DIRECTOR_SEED' : null,
             sponsorCode: generateShortInviteCode(5),
             sponsorCodeUsed: invitedBySponsorCode,
             status: 'ACTIVE',
@@ -134,6 +142,33 @@ export async function POST(request: NextRequest) {
       }
     }
     if (!newUser!) throw new Error('User creation failed')
+
+    let treeIdUpdate: string | null = null
+    if (isRootAdmin || isDirectorSeed) {
+      treeIdUpdate = newUser.id
+    } else if (pendingUser.sponsorId) {
+      const sponsor = await prisma.user.findUnique({
+        where: { id: pendingUser.sponsorId },
+        select: { treeId: true, id: true },
+      })
+      treeIdUpdate = sponsor?.treeId ?? sponsor?.id ?? null
+    }
+    if (treeIdUpdate) {
+      await prisma.user.update({
+        where: { id: newUser.id },
+        data: { treeId: treeIdUpdate },
+      })
+    }
+
+    if (invitedBySponsorCode && !isRootAdmin) {
+      await markInviteUsedAndRegenerate({
+        inviteCodeUsed: invitedBySponsorCode,
+        usedByUserId: newUser.id,
+      }).catch((e) => console.error('Invite regenerate error:', e))
+    }
+    if (isRootAdmin) {
+      await ensureActiveInviteForUser(newUser.id).catch(() => {})
+    }
 
     await prisma.otpVerification.delete({ where: { id: record.id } }).catch(() => {})
     await prisma.user.delete({ where: { id: pendingUserId } }).catch(() => {})

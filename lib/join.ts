@@ -1,9 +1,10 @@
 /**
- * Official join logic — single place for invite code resolution and tree assignment.
+ * Official join logic — invite code resolution (one-time codes) and tree assignment.
  * See docs/OFFICIAL_APP_RULEBOOK.md.
  */
 
 import { prisma } from './prisma'
+import { findActiveInviteByCode, normalizeInviteCode as normalizeInviteCodeFromInvite } from './invite'
 
 export const JOIN_ERROR_CODES = {
   INVALID_INVITE_CODE: 'INVALID_SPONSOR_CODE',
@@ -13,9 +14,8 @@ export const JOIN_ERROR_CODES = {
   FORBIDDEN_VISIBILITY: 'forbidden_visibility',
 } as const
 
-/** Normalize invite code: uppercase, trim. Case-insensitive lookup. */
 export function normalizeInviteCode(code: string | undefined): string {
-  return (code && String(code).trim().toUpperCase()) || ''
+  return normalizeInviteCodeFromInvite(code)
 }
 
 export type ResolvedSponsor = {
@@ -25,41 +25,48 @@ export type ResolvedSponsor = {
   name: string
   role: string
   rank: string
+  treeId: string | null
+  /** True when inviter is Admin/Director: new user becomes tree root, not under inviter. */
+  isDirectorSeed: boolean
+}
+
+/** Admin/Director roles that seed new tree roots (new user is not under them). */
+function isDirectorOrAdmin(role: string): boolean {
+  return role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'DIRECTOR'
 }
 
 /**
- * Resolve invite code to the sponsor (ACTIVE user who owns that code).
- * Server-side only. Used at registration.
- * Returns null if code invalid or sponsor not ACTIVE.
+ * Resolve invite code to sponsor via one-time InviteCodeRecord (usedAt is null).
+ * Returns null if code invalid, used, or owner not ACTIVE.
  */
 export async function resolveSponsorFromInviteCode(
   inviteCode: string
 ): Promise<ResolvedSponsor | null> {
-  const code = normalizeInviteCode(inviteCode)
-  if (!code) return null
-
-  const sponsor = await prisma.user.findFirst({
-    where: { sponsorCode: code, status: 'ACTIVE' },
-    select: { id: true, path: true, sponsorCode: true, name: true, role: true, rank: true },
+  const result = await findActiveInviteByCode(inviteCode)
+  if (!result) return null
+  const sponsor = result.sponsor
+  const activeUser = await prisma.user.findFirst({
+    where: { id: sponsor.id, status: 'ACTIVE' },
+    select: { id: true, path: true, sponsorCode: true, name: true, role: true, rank: true, treeId: true },
   })
-
-  if (!sponsor) return null
+  if (!activeUser) return null
   return {
-    id: sponsor.id,
-    path: sponsor.path ?? [],
-    sponsorCode: sponsor.sponsorCode ?? code,
-    name: sponsor.name,
-    role: sponsor.role,
-    rank: sponsor.rank,
+    id: activeUser.id,
+    path: activeUser.path ?? [],
+    sponsorCode: activeUser.sponsorCode ?? inviteCode.trim().toUpperCase(),
+    name: activeUser.name,
+    role: activeUser.role,
+    rank: activeUser.rank,
+    treeId: activeUser.treeId ?? null,
+    isDirectorSeed: isDirectorOrAdmin(activeUser.role),
   }
 }
 
 /**
- * Compute path for a new user under the given sponsor.
- * path = sponsor.id ? [...sponsor.path, sponsor.id] : []
+ * Compute path for a new user. Director seed => []; else sponsor path + sponsor id.
  */
 export function computePathForNewUser(sponsor: ResolvedSponsor | null): string[] {
-  if (!sponsor || !sponsor.id) return []
+  if (!sponsor || !sponsor.id || sponsor.isDirectorSeed) return []
   return [...sponsor.path, sponsor.id]
 }
 
@@ -98,7 +105,7 @@ export function validateNotOwnInviteCode(
   ownSponsorCode: string | null
 ): boolean {
   if (!ownSponsorCode) return true
-  return normalizeInviteCode(inviteCode) !== normalizeInviteCode(ownSponsorCode)
+  return normalizeInviteCodeFromInvite(inviteCode) !== normalizeInviteCodeFromInvite(ownSponsorCode)
 }
 
 /**

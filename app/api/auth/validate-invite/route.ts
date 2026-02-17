@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { resolveSponsorFromInviteCode } from '@/lib/join'
-import { getAllowedRanksForSponsor } from '@/lib/ranks'
 import { getRankLabel } from '@/lib/ranks'
 
 /**
@@ -26,18 +25,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const allowedRanks = getAllowedRanksForSponsor({
-      sponsorRank: sponsor.rank as 'ADMIN' | 'DIRECTOR' | 'VP' | 'SSM' | 'SM' | 'BDM',
-      sponsorRole: sponsor.role,
-    })
-
     return NextResponse.json({
       ok: true,
       sponsorName: sponsor.name,
       sponsorCode: sponsor.sponsorCode,
       sponsorRank: sponsor.rank,
       sponsorRankLabel: getRankLabel(sponsor.rank),
-      allowedRanks: allowedRanks.map((r) => ({ value: r, label: getRankLabel(r) })),
+      isDirectorSeed: sponsor.isDirectorSeed,
     })
   } catch (e) {
     console.error('Validate invite error:', e)

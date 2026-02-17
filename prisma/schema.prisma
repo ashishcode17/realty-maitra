@@ -29,14 +29,24 @@ enum UserStatus {
   PENDING_VERIFICATION
 }
 
-// Position in hierarchy (separate from Role which is for permissions)
+// Position in hierarchy (legacy; see PerformanceRank for display)
 enum Rank {
-  ADMIN    // Root admin only
+  ADMIN
   DIRECTOR
   VP
   SSM
   SM
   BDM
+}
+
+// Performance rank (R0=top .. R5=Entry). Labels from config; stable keys for migrations.
+enum PerformanceRank {
+  R0   // Director-equivalent
+  R1   // VP
+  R2   // AVP
+  R3   // SSM
+  R4   // SM
+  R5   // Entry
 }
 
 enum ProjectStatus {
@@ -140,17 +150,26 @@ model User {
   sponsor           User?       @relation("UserTree", fields: [sponsorId], references: [id])
   downlines         User[]      @relation("UserTree")
   path              String[]    // Array of ancestor IDs for tree queries
-  sponsorCode       String?     @unique // Short 4-5 char invite code (A-Z, 0-9)
-  sponsorCodeUsed   String?    // Invite code used at sign-up (audit)
-  rank              Rank       @default(BDM) // Position: ADMIN > DIRECTOR > VP > SSM > SM > BDM
-  lastActive        DateTime?   // Last active timestamp
+  sponsorCode       String?     @unique // Current active invite code (synced with InviteCodeRecord)
+  sponsorCodeUsed   String?     // Invite code used at sign-up (audit)
+  rank              Rank        @default(BDM) // Legacy
+  performanceRank   PerformanceRank @default(R5) // Entry=R5; progression R4..R0
+  treeId            String?     // Tree root id: null or id = this user is tree root; else sponsor's treeId
+  createdByDirectorId String?   // Set when joined via Director/Admin invite (tree root seed)
+  createdViaInviteType String?  // e.g. DIRECTOR_SEED
+  idImageUrl        String?     // Govt ID image (secure storage path/URL)
+  idImageUploadedAt DateTime?
+  lastActive        DateTime?
   isDemo            Boolean     @default(false)
   roleAssignedBy    String?
   roleAssignedAt    DateTime?
-  profilePhotoUrl   String?     // URL or path to profile image
-  tokenVersion      Int         @default(0) // Increment to invalidate all JWTs (logout all)
+  profilePhotoUrl   String?
+  tokenVersion      Int         @default(0)
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
+
+  inviteCodeRecords InviteCodeRecord[]
+  payoutLedger      PayoutLedger[]
 
   // Relations
   userSettings      UserSettings?
@@ -175,6 +194,37 @@ model User {
   @@index([role])
   @@index([status])
   @@index([rank])
+  @@index([treeId])
+  @@index([createdByDirectorId])
+}
+
+// One-time invite codes: when used, mark and regenerate new code for owner.
+model InviteCodeRecord {
+  id            String    @id @default(cuid())
+  code          String    @unique // Uppercase alphanumeric 4-5 chars
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  usedAt        DateTime?
+  usedByUserId  String?
+  createdAt     DateTime  @default(now())
+
+  @@index([userId])
+  @@index([code])
+}
+
+// Commission: one row per beneficiary per booking. See OFFICIAL_APP_RULEBOOK Commission Rules v1.
+model PayoutLedger {
+  id          String   @id @default(cuid())
+  bookingId   String   // External or internal booking reference
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  amount      Float    // INR
+  pct         Float    // Share %
+  rankAtTime  String?  // Performance rank when payout was calculated
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([bookingId])
 }
 
 model Project {

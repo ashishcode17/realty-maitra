@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Users, TrendingUp, Award, Calendar, ArrowUpRight, UserPlus, Copy } from 'lucide-react'
+import { Users, TrendingUp, Award, Calendar, ArrowUpRight, UserPlus, Copy, Eye, EyeOff } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { getRankLabel } from '@/lib/ranks'
@@ -12,6 +12,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<any>(null)
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [inviteCodeRevealed, setInviteCodeRevealed] = useState(false)
 
   useEffect(() => {
     loadData()
@@ -168,11 +169,21 @@ export default function DashboardPage() {
           <Card className="bg-emerald-900/20 border-emerald-800">
             <CardContent className="pt-6">
               <h3 className="text-white font-semibold mb-2">Your Invite Code</h3>
-              <p className="text-slate-300 text-sm mb-2">Share this code so others can join under you.</p>
+              <p className="text-slate-300 text-sm mb-2">Share this code so others can join under you. New code generated after each successful join.</p>
               <div className="flex flex-wrap items-center gap-2">
-                <code className="px-4 py-2 bg-slate-900 rounded font-mono text-emerald-400 text-xl">
-                  {user.sponsorCode || '—'}
+                <code className="px-4 py-2 bg-slate-900 rounded font-mono text-emerald-400 text-xl min-w-[8rem]">
+                  {inviteCodeRevealed && user.sponsorCode ? user.sponsorCode : (user.sponsorCode ? '•••••' : '—')}
                 </code>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-slate-600 text-slate-300"
+                  onClick={() => setInviteCodeRevealed((v) => !v)}
+                  title={inviteCodeRevealed ? 'Hide' : 'Show'}
+                >
+                  {inviteCodeRevealed ? <EyeOff className="h-4 w-4 mr-1" /> : <Eye className="h-4 w-4 mr-1" />}
+                  {inviteCodeRevealed ? 'Hide' : 'Show'}
+                </Button>
                 <Button
                   size="sm"
                   onClick={() => {

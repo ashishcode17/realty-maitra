@@ -37,7 +37,7 @@ function getRegisterError(data: { error?: string; message?: string; code?: strin
   }
 }
 
-type Step = 'enter-invite' | 'select-position' | 'account-details' | 'otp' | 'success';
+type Step = 'enter-invite' | 'account-details' | 'otp' | 'success';
 type RootStep = 'root-form' | 'otp' | 'success';
 
 export default function RegisterPage() {
@@ -58,7 +58,7 @@ export default function RegisterPage() {
     sponsorName: string;
     sponsorCode: string;
     sponsorRankLabel: string;
-    allowedRanks: { value: string; label: string }[];
+    isDirectorSeed?: boolean;
   } | null>(null);
   const [otp, setOtp] = useState('');
   const [mockOTP, setMockOTP] = useState('');
@@ -97,10 +97,10 @@ export default function RegisterPage() {
         sponsorName: data.sponsorName,
         sponsorCode: data.sponsorCode,
         sponsorRankLabel: data.sponsorRankLabel ?? data.sponsorRank ?? '',
-        allowedRanks: data.allowedRanks || [],
+        isDirectorSeed: data.isDirectorSeed === true,
       });
-      setFormData((f) => ({ ...f, sponsorCode: code, rank: '' }));
-      setStep('select-position');
+      setFormData((f) => ({ ...f, sponsorCode: code }));
+      setStep('account-details');
     } catch {
       toast.error('Failed to validate invite code.');
     } finally {
@@ -119,7 +119,6 @@ export default function RegisterPage() {
         city: formData.city.trim() || undefined,
         password: formData.password,
         sponsorCode: step === 'account-details' ? formData.sponsorCode : undefined,
-        rank: formData.rank || undefined,
       };
       if (rootStep === 'root-form' && isFirstUser) {
         payload.rootAdmin = true;
@@ -260,46 +259,30 @@ export default function RegisterPage() {
           </Card>
         )}
 
-        {step === 'select-position' && inviteContext && (
-          <Card className="bg-slate-800 border-slate-600 shadow-xl">
-            <CardHeader>
-              <CardTitle className="text-white text-xl">Select Your Position</CardTitle>
-              <CardDescription className="text-slate-300">Your available positions are based on your sponsor&apos;s rank.</CardDescription>
-            </CardHeader>
-            <CardContent className="text-white space-y-4">
-              <div className="p-4 rounded-lg bg-slate-700/50 border border-slate-600 space-y-1">
-                <p className="text-sm font-medium text-slate-400">Organization Sponsor</p>
-                <p className="font-semibold text-white">{inviteContext.sponsorName}</p>
-                <p className="text-sm text-slate-300">Position: {inviteContext.sponsorRankLabel}</p>
-                <p className="text-sm text-slate-300">Invite Code: <span className="font-mono">{inviteContext.sponsorCode}</span></p>
-              </div>
-              <form onSubmit={(e) => { e.preventDefault(); setStep('account-details'); }}>
-                <div className="space-y-2">
-                  <Label className="text-slate-300">Position</Label>
-                  <select
-                    required
-                    value={formData.rank}
-                    onChange={(e) => setFormData({ ...formData, rank: e.target.value })}
-                    className="w-full h-10 rounded-md bg-slate-700 border border-slate-600 text-white px-3"
-                  >
-                    <option value="">Select position</option>
-                    {inviteContext.allowedRanks.map((r) => (
-                      <option key={r.value} value={r.value}>{r.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <Button type="submit" className="w-full min-h-[44px] mt-4 bg-emerald-600 hover:bg-emerald-700 text-white">Continue</Button>
-              </form>
-            </CardContent>
-          </Card>
-        )}
-
         {step === 'account-details' && (
           <Card className="bg-slate-800 border-slate-600 shadow-xl">
             <CardHeader>
               <CardTitle className="text-white text-xl">Complete Your Registration</CardTitle>
             </CardHeader>
-            <CardContent className="text-white">
+            <CardContent className="text-white space-y-4">
+              {inviteContext && (
+                <div className="p-4 rounded-lg bg-slate-700/50 border border-slate-600 space-y-1">
+                  {inviteContext.isDirectorSeed ? (
+                    <>
+                      <p className="text-sm font-medium text-slate-400">Organization Invitation (Issued by Director/Admin)</p>
+                      <p className="text-sm text-slate-300">Issuer: {inviteContext.sponsorName}</p>
+                      <p className="text-sm text-slate-300">Invite Code: <span className="font-mono">{inviteContext.sponsorCode}</span></p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm font-medium text-slate-400">Sponsor</p>
+                      <p className="font-semibold text-white">{inviteContext.sponsorName}</p>
+                      <p className="text-sm text-slate-300">Position: {inviteContext.sponsorRankLabel}</p>
+                      <p className="text-sm text-slate-300">Invite Code: <span className="font-mono">{inviteContext.sponsorCode}</span></p>
+                    </>
+                  )}
+                </div>
+              )}
               <form onSubmit={handleRegister} className="space-y-4">
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -331,7 +314,7 @@ export default function RegisterPage() {
                 <Button type="submit" disabled={loading} className="w-full min-h-[44px] bg-emerald-600 hover:bg-emerald-700 text-white">
                   {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending OTP...</> : 'Create My Account'}
                 </Button>
-                <Button type="button" variant="ghost" className="w-full text-slate-400" onClick={() => setStep('select-position')}>Back</Button>
+                <Button type="button" variant="ghost" className="w-full text-slate-400" onClick={() => setStep('enter-invite')}>Back</Button>
               </form>
             </CardContent>
           </Card>

@@ -96,7 +96,8 @@ This document defines the **official functioning rules** of the app. All code mu
 
 ## E) Data integrity rules (must never break)
 
-- **sponsorCode**: Must be **unique** across all users. Generated once at account creation (after OTP verification). Never changed. Stored uppercase/normalized.
+- **sponsorCode**: Must be **unique** across all users. Synced with active **InviteCodeRecord** (one-time use). Stored uppercase/normalized.
+- **Invite code (one-time)**: Resolved via `InviteCodeRecord` where `usedAt` is null. After successful registration the code is marked used and a new code is generated for the inviter.
 - **sponsorId**: Must reference an existing user ID or be null (root). No dangling references.
 - **path**: Must match ancestry: `path === (sponsor ? [...sponsor.path, sponsor.id] : [])`. No cycles: current user’s ID must not appear in their own `path`.
 - **One account per email**: Enforced by unique constraint on `email`.
@@ -191,13 +192,14 @@ This document defines the **official functioning rules** of the app. All code mu
 1. **If no users exist**
    - Show “Create Root Admin” / “Initialize Organization” (no invite code).
    - Fields: Full Name, Email, Phone, Password.
-   - On success: create user with role=SUPER_ADMIN, rank=ADMIN, sponsorId=null, path=[], and a short unique invite code.
+   - On success: create user with role=SUPER_ADMIN, rank=ADMIN, sponsorId=null, path=[], treeId=id, and a short unique invite code (stored in InviteCodeRecord).
 2. **If users exist**
-   - Invite code **required**. Validate invite code → resolve sponsor.
-   - Show sponsor identity: “Joining under: [Sponsor Name]”, “Sponsor Code: [XXXX]”.
-   - Show **only** allowed rank options (from server) based on sponsor’s rank/role. Registrant chooses one.
-   - Create account: parentId/path/level set by server from invite only; rank must be in allowed list; generate and assign short invite code immediately.
-   - Show success: “Welcome…”, “Your Position: [Rank]”, “Your Personal Invite Code: [XXXX]” with copy.
+   - Invite code **required**. Validate invite code (via InviteCodeRecord, usedAt null) → resolve sponsor.
+   - Show sponsor preview: “Sponsor” / “[Name]”, “[Rank]”, “Invite Code: [CODE]”; or “Organization Invitation (Issued by Director/Admin)” when `isDirectorSeed`.
+   - **No “Choose Position” for public**: Rank is **automatic** — Entry (performanceRank R5). Higher ranks only via Admin/Director tools or performance upgrade.
+   - Create account: parentId/path/treeId set by server; if Director/Admin invite → new user is **tree root** (treeId=user.id, sponsorId=null, path=[], createdByDirectorId, createdViaInviteType=DIRECTOR_SEED).
+   - After OTP: mark invite code used, regenerate new code for inviter; assign new user a new invite code.
+   - Show success: “Welcome…”, “Your Invite Code” (masked by default with show/copy).
 
 ---
 
@@ -208,13 +210,56 @@ This document defines the **official functioning rules** of the app. All code mu
 
 ---
 
+## M) Tree root seeding (Director/Admin invite)
+
+- When a user registers using an **Admin or Director** invite code, they do **not** join “under” the director as a normal downline.
+- They become the **first root of a new tree**: `treeId = user.id`, `sponsorId = null`, `path = []`, `createdByDirectorId = inviter id`, `createdViaInviteType = DIRECTOR_SEED`.
+- Directors/Admin can seed multiple independent tree roots. They are “issuers,” not tree parents for those users.
+- UI: sponsor preview shows “Organization Invitation (Issued by Director/Admin)” and issuer name.
+
+## N) Performance rank (R0–R5) and auto Entry
+
+- **Performance rank** is stored as `User.performanceRank` (enum R0..R5). Labels from config (`lib/performanceRank.ts`): R0=Director, R1=VP, R2=AVP, R3=Senior Manager, R4=Manager, R5=Associate (Entry).
+- **Public registration**: All new members get **R5 (Entry)** automatically. No rank selection at signup.
+- Higher ranks (R4–R0) are granted only by Admin/Director (promote) or by **performance upgrade rule** (documented separately).
+
+## O) Commission rules v1 (summary)
+
+- Entry-level closer: 40% direct. Uplines: 5% each up the chain. Rank caps: SM 60%, SSM 70%, AVP 80%, VP 90%, Director 100%.
+- Bookings stored with createdByUserId, treeId; payout distribution calculated on creation; **PayoutLedger** stores per-user, per-booking amount and pct.
+- Total payout must not exceed 100%. Admin UI can view ledger and per-user totals. (Full engine and “self vs downline” % logic in Open Decisions.)
+
+## P) Govt ID and exports
+
+- **Govt ID**: Registration may include ID image upload (JPG/PNG, size limit server-side). Stored in `User.idImageUrl`; member can see “Uploaded” status but not download; Admin/Director can download single or bulk (zip).
+- **Exports**: Admin/Director-only. Users CSV (name, email, phone, rank, treeId, join date, sponsor/issuer); media zip (profile pics, govt IDs); full zip (CSV + media + manifest). APIs protected; bulk zip streamed server-side.
+
+## Q) Permissions matrix
+
+- **Admin/Director**: Create/edit/delete projects, slabs, training, offers; view all users (or scoped to trees they seeded); download IDs; export data.
+- **Member**: View allowed content; update own profile (name, phone, city, profile pic); upload govt ID at registration; view own ID status only. **Cannot** create/edit/delete org-level entities.
+
 ## Open decisions
 
-- **Invite code expiry**: Currently there is no expiry. If product later adds “time-limited” codes, that will be documented here and implemented explicitly.
-- **Maximum tree depth**: No limit is enforced. If a limit is introduced later, it will be documented and enforced in join logic.
-- **Sponsor reassignment by admin**: Allowed via existing `updateSponsorAndRecomputePaths`-style logic; exact admin UI/API is out of scope of this rulebook but must preserve no-cycles and path recompute.
-- **BDM under BDM**: Allowed by default (rank list includes BDM under BDM). Can be restricted later if desired.
+- **Invite code expiry**: One-time use is enforced; no time-based expiry.
+- **Rank progression (5 bookings → subtree upgrade)**: Exact “subtree upgrade + new tree root” behavior to be finalized; implement non-destructive default (e.g. leader becomes new tree root, downline preserved).
+- **Commission “self vs downline” %**: SM direct 60% vs 10% when downline does booking — exact split to be defined; v1 uses single cap per rank.
+- **Maximum tree depth**: No limit enforced.
+- **Director scope**: Global access for now; can be scoped to “trees they seeded” later.
 
 ---
 
-*Last updated: Official production mode. Organised start + rank rules. All join and tree logic must align with this rulebook.*
+## Verification checklist (production)
+
+- [ ] Fresh DB (0 users): `/register` shows only “Create Root Admin”; no invite field.
+- [ ] After root exists: `/register` requires invite code; no “Choose Position”; sponsor preview shows Sponsor or “Organization Invitation (Issued by Director/Admin)” when applicable.
+- [ ] Login never asks for invite code.
+- [ ] Invalid or already-used invite code: “Invalid invite code.” (no demo names/codes).
+- [ ] After one user registers with a valid code: that code is marked used; inviter gets a new code; new user has Entry (R5).
+- [ ] Director/Admin invite: new user has treeId=id, sponsorId=null, createdByDirectorId set.
+- [ ] Dashboard: invite code shown masked (•••••) with Show/Hide and Copy; “New code generated after each successful join.”
+- [ ] No demo labels or hardcoded sponsor in registration flow.
+
+---
+
+*Last updated: Production spec — one-time invite, tree root seeding, performance rank R0–R5, auto Entry, permissions, commission v1, govt ID & exports.*

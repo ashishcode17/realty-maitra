@@ -15,7 +15,6 @@ import {
   isFirstUserAllowed,
   JOIN_ERROR_CODES,
 } from '@/lib/join'
-import { isRankAllowedUnderSponsor, canAssignDirector, type Rank } from '@/lib/ranks'
 import { nanoid } from 'nanoid'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -41,7 +40,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json().catch(() => ({}))
-    const { name, email, phone, city, password, sponsorCode, rank: chosenRank, rootAdmin } = body
+    const { name, email, phone, city, password, sponsorCode, rootAdmin } = body
     const nameStr = typeof name === 'string' ? name.trim() : ''
     const emailStr = typeof email === 'string' ? email.trim().toLowerCase() : ''
     const phoneStr = typeof phone === 'string' ? phone.trim() : ''
@@ -109,7 +108,9 @@ export async function POST(request: NextRequest) {
     let isFirstUser = false
     let path: string[] = []
     let role: 'SUPER_ADMIN' | 'ADMIN' | 'DIRECTOR' | 'VP' | 'AVP' | 'SSM' | 'SM' | 'BDM' = 'BDM'
-    let rank: Rank = 'BDM'
+    let rank: 'ADMIN' | 'DIRECTOR' | 'VP' | 'SSM' | 'SM' | 'BDM' = 'BDM'
+    let isDirectorSeed = false
+    let createdByDirectorId: string | null = null
 
     if (isRootPath && firstUserAllowed) {
       isFirstUser = true
@@ -124,31 +125,11 @@ export async function POST(request: NextRequest) {
           { status: 400, headers: { 'Content-Type': 'application/json' } }
         )
       }
-      isFirstUser = sponsor.id === ''
       path = computePathForNewUser(sponsor)
-
-      const rankStr = typeof chosenRank === 'string' ? chosenRank.trim().toUpperCase() : ''
-      const allowedRanks: Rank[] = ['ADMIN', 'DIRECTOR', 'VP', 'SSM', 'SM', 'BDM']
-      if (!rankStr || !allowedRanks.includes(rankStr as Rank)) {
-        return NextResponse.json(
-          { error: 'You must select a valid position.', code: 'rank_not_allowed' },
-          { status: 400, headers: { 'Content-Type': 'application/json' } }
-        )
-      }
-      if (rankStr === 'DIRECTOR' && !canAssignDirector(sponsor.role, sponsor.rank as Rank)) {
-        return NextResponse.json(
-          { error: 'Only Admin can create Director-level accounts.', code: 'director_restricted' },
-          { status: 403, headers: { 'Content-Type': 'application/json' } }
-        )
-      }
-      if (!isRankAllowedUnderSponsor({ chosenRank: rankStr, sponsorRank: sponsor.rank as Rank, sponsorRole: sponsor.role })) {
-        return NextResponse.json(
-          { error: 'You cannot join at this position under your current sponsor.', code: 'rank_not_allowed' },
-          { status: 400, headers: { 'Content-Type': 'application/json' } }
-        )
-      }
-      rank = rankStr as Rank
-      role = rank === 'DIRECTOR' ? 'DIRECTOR' : rank === 'VP' ? 'VP' : rank === 'SSM' ? 'SSM' : rank === 'SM' ? 'SM' : 'BDM'
+      isDirectorSeed = sponsor.isDirectorSeed
+      createdByDirectorId = isDirectorSeed ? sponsor.id : null
+      role = 'BDM'
+      rank = 'BDM'
     }
 
     await prisma.user.deleteMany({ where: { email: `pending_${emailStr}` } })
@@ -168,12 +149,13 @@ export async function POST(request: NextRequest) {
         passwordHash: hashPassword(passwordStr),
         role,
         roleRank: getRoleRank(role),
-        sponsorId: isFirstUser ? null : sponsor!.id,
+        sponsorId: isFirstUser || isDirectorSeed ? null : sponsor!.id,
         path,
         rank,
         status: 'PENDING_VERIFICATION',
         emailVerified: false,
         sponsorCode: pendingCode,
+        sponsorCodeUsed: !isFirstUser && sponsor ? sponsor.sponsorCode : null,
       },
     })
 
@@ -182,7 +164,11 @@ export async function POST(request: NextRequest) {
         identifier: emailStr,
         otpHash,
         purpose: 'REGISTER',
-        meta: JSON.stringify({ pendingUserId: pendingUser.id }),
+        meta: JSON.stringify({
+          pendingUserId: pendingUser.id,
+          isDirectorSeed,
+          createdByDirectorId,
+        }),
         expiresAt,
       },
     })
