@@ -215,8 +215,8 @@ export async function POST(request: NextRequest) {
     if (govtIdFile) {
       const ext = govtIdFile.type === 'image/png' ? '.png' : '.jpg'
       const fileName = `${pendingUser.id}_${randomUUID()}${ext}`
-      const filePath = path.join(GOVT_ID_DIR, fileName)
-      const relativePath = path.join('uploads', 'govt-ids', fileName).replace(/\\/g, '/')
+      const filePath = path.join(`${GOVT_ID_DIR}${path.sep}${fileName}`)
+      const relativePath = path.join(`uploads${path.sep}govt-ids${path.sep}${fileName}`).replace(/\\/g, '/')
       await fs.mkdir(GOVT_ID_DIR, { recursive: true })
       const buffer = Buffer.from(await govtIdFile.arrayBuffer())
       await fs.writeFile(filePath, buffer)
