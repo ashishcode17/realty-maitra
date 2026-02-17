@@ -213,17 +213,30 @@ export async function POST(request: NextRequest) {
     })
 
     if (govtIdFile) {
-      const ext = govtIdFile.type === 'image/png' ? '.png' : '.jpg'
-      const fileName = `${pendingUser.id}_${randomUUID()}${ext}`
-      const filePath = path.join(`${GOVT_ID_DIR}/${fileName}`)
-      const relativePath = (`uploads/govt-ids/${fileName}`).replace(/\\/g, '/')
-      await fs.mkdir(GOVT_ID_DIR, { recursive: true })
-      const buffer = Buffer.from(await govtIdFile.arrayBuffer())
-      await fs.writeFile(filePath, buffer)
-      await prisma.user.update({
-        where: { id: pendingUser.id },
-        data: { idImageUrl: relativePath, idImageUploadedAt: new Date() },
-      })
+      try {
+        const ext = govtIdFile.type === 'image/png' ? '.png' : '.jpg'
+        const fileName = `${pendingUser.id}_${randomUUID()}${ext}`
+        const filePath = path.join(`${GOVT_ID_DIR}/${fileName}`)
+        const relativePath = (`uploads/govt-ids/${fileName}`).replace(/\\/g, '/')
+        await fs.mkdir(GOVT_ID_DIR, { recursive: true })
+        const buffer = Buffer.from(await govtIdFile.arrayBuffer())
+        await fs.writeFile(filePath, buffer)
+        await prisma.user.update({
+          where: { id: pendingUser.id },
+          data: { idImageUrl: relativePath, idImageUploadedAt: new Date() },
+        })
+      } catch (fileErr: unknown) {
+        const msg = fileErr instanceof Error ? fileErr.message : String(fileErr)
+        console.error('Register: Govt ID save failed', msg)
+        return NextResponse.json(
+          {
+            error: 'Failed to save Govt ID',
+            message: isDev ? msg : 'Failed to save Govt ID image. Please try again.',
+            code: 'GOVT_ID_SAVE_FAILED',
+          },
+          { status: 500, headers: { 'Content-Type': 'application/json' } }
+        )
+      }
     }
 
     await prisma.otpVerification.create({
@@ -276,6 +289,17 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(res, { headers: { 'Content-Type': 'application/json' } })
   } catch (error: unknown) {
-    return handleApiError(error, 'Register')
+    const errMsg = error instanceof Error ? error.message : String(error)
+    const errCode = error && typeof (error as { code?: string }).code === 'string' ? (error as { code: string }).code : undefined
+    console.error('Register error:', errMsg, errCode ?? '', error)
+    // Return a structured response so the client can show a specific message
+    return NextResponse.json(
+      {
+        error: 'Registration failed',
+        message: isDev ? errMsg : 'Registration failed. Please try again.',
+        code: errCode ?? 'REGISTRATION_FAILED',
+      },
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    )
   }
 }

@@ -246,6 +246,16 @@ export async function POST(request: NextRequest) {
       { headers: { 'Content-Type': 'application/json' } }
     )
   } catch (error: unknown) {
-    return handleApiError(error, 'Verify OTP')
+    const errMsg = error instanceof Error ? error.message : String(error)
+    const errCode = error && typeof (error as { code?: string }).code === 'string' ? (error as { code: string }).code : undefined
+    console.error('Verify OTP error:', errMsg, errCode ?? '', error)
+    return NextResponse.json(
+      {
+        error: 'Verification failed',
+        message: process.env.NODE_ENV === 'development' ? errMsg : 'Verification failed. Please try again.',
+        code: errCode ?? 'VERIFICATION_FAILED',
+      },
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    )
   }
 }

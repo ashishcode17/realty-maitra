@@ -39,6 +39,14 @@ function getRegisterError(data: { error?: string; message?: string; code?: strin
       return 'Govt ID file is too large. Maximum size is 2MB.';
     case 'GOVT_ID_INVALID_TYPE':
       return 'Invalid file type. Only JPG and PNG are allowed for Govt ID.';
+    case 'GOVT_ID_SAVE_FAILED':
+      return data.message || 'Failed to save Govt ID. Please try again.';
+    case 'REGISTRATION_FAILED':
+      return data.message || 'Registration failed. Please try again.';
+    case 'VERIFICATION_FAILED':
+      return data.message || 'Verification failed. Please try again.';
+    case 'INVALID_STATE':
+      return data.message || 'Session expired. Please start registration again.';
     default:
       return data.message || data.error || 'Registration failed.';
   }
@@ -74,6 +82,8 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [successUser, setSuccessUser] = useState<{ name: string; rank: string; sponsorCode: string; sponsorName?: string; govtIdUploaded?: boolean } | null>(null);
   const [govtIdFile, setGovtIdFile] = useState<File | null>(null);
+  // Persistent error so you can read and copy the actual message (toast disappears too fast)
+  const [lastError, setLastError] = useState<{ message: string; code?: string; raw?: string } | null>(null);
 
   useEffect(() => {
     fetch('/api/bootstrap-status')
@@ -134,6 +144,7 @@ export default function RegisterPage() {
         return;
       }
     }
+    setLastError(null);
     setLoading(true);
     try {
       let body: string | FormData;
@@ -164,18 +175,34 @@ export default function RegisterPage() {
         headers,
         body,
       });
-      const data = await response.json();
-      if (!response.ok) {
-        toast.error(getRegisterError(data));
+      let data: { message?: string; error?: string; code?: string; mockOTP?: string; smsFailed?: boolean } = {};
+      try {
+        data = await response.json();
+      } catch {
+        setLastError({ message: 'Server returned invalid JSON. Check Network tab (F12 → Network) for the response.', raw: `Status: ${response.status}` });
+        toast.error('Server error. See red error box below.');
         return;
       }
+      if (!response.ok) {
+        const displayMsg = getRegisterError(data);
+        setLastError({
+          message: data.message || data.error || displayMsg,
+          code: data.code,
+          raw: JSON.stringify(data, null, 2),
+        });
+        toast.error(displayMsg);
+        return;
+      }
+      setLastError(null);
       setMockOTP(data.mockOTP ?? '');
       toast.success(data.message || 'OTP sent');
       if (data.smsFailed) toast.info('Check your email for the code.');
       if (rootStep === 'root-form') setRootStep('otp');
       else setStep('otp');
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Registration failed');
+      const msg = err instanceof Error ? err.message : String(err);
+      setLastError({ message: msg, raw: err instanceof Error ? err.stack : String(err) });
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -183,6 +210,7 @@ export default function RegisterPage() {
 
   const handleVerifyOTP = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLastError(null);
     setLoading(true);
     try {
       const response = await fetch('/api/auth/verify-otp', {
@@ -190,11 +218,25 @@ export default function RegisterPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: formData.email.trim().toLowerCase(), otp }),
       });
-      const data = await response.json();
-      if (!response.ok) {
-        toast.error(getRegisterError(data));
+      let data: { message?: string; error?: string; code?: string; token?: string; user?: { name?: string; rank?: string; sponsorCode?: string } } = {};
+      try {
+        data = await response.json();
+      } catch {
+        setLastError({ message: 'Server returned invalid JSON. Check Network tab (F12 → Network).', raw: `Status: ${response.status}` });
+        toast.error('Server error. See red error box below.');
         return;
       }
+      if (!response.ok) {
+        const displayMsg = getRegisterError(data);
+        setLastError({
+          message: data.message || data.error || displayMsg,
+          code: data.code,
+          raw: JSON.stringify(data, null, 2),
+        });
+        toast.error(displayMsg);
+        return;
+      }
+      setLastError(null);
       if (data.token) localStorage.setItem('token', data.token);
       setSuccessUser({
         name: data.user?.name || formData.name,
@@ -206,7 +248,9 @@ export default function RegisterPage() {
       if (rootStep === 'otp') setRootStep('success');
       else setStep('success');
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Verification failed');
+      const msg = err instanceof Error ? err.message : String(err);
+      setLastError({ message: msg, raw: err instanceof Error ? err.stack : String(err) });
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -227,12 +271,36 @@ export default function RegisterPage() {
   const showRootForm = isFirstUser && rootStep === 'root-form' && step === 'enter-invite';
   const showInviteStep = !isFirstUser && step === 'enter-invite';
 
+  const copyError = () => {
+    if (!lastError) return;
+    const text = lastError.raw ?? `${lastError.code ?? ''}: ${lastError.message}`;
+    void navigator.clipboard.writeText(text).then(() => toast.success('Copied to clipboard'));
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4 sm:p-6">
       <div className="w-full max-w-2xl">
         <div className="text-center mb-6 sm:mb-8">
           <BrandLogo href="/" size="lg" variant="light" className="mb-4 justify-center" />
         </div>
+
+        {lastError && (
+          <Card className="mb-6 border-red-500/80 bg-red-950/50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-red-400 text-sm font-medium">Error (see below to copy)</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <p className="text-red-200 text-sm break-words">{lastError.message}</p>
+              {lastError.code && <p className="text-red-400/80 text-xs">Code: {lastError.code}</p>}
+              {lastError.raw && (
+                <pre className="text-xs bg-black/30 p-3 rounded overflow-auto max-h-32 text-slate-300 break-all whitespace-pre-wrap">{lastError.raw}</pre>
+              )}
+              <Button type="button" variant="outline" size="sm" onClick={copyError} className="border-red-500/50 text-red-300 hover:bg-red-900/30">
+                Copy full error
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {showRootForm && (
           <Card className="bg-slate-800 border-slate-600 shadow-xl">
