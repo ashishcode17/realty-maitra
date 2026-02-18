@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { requireAdmin } from '@/lib/middleware'
+import { requireAdmin, requireAdminOrDirector } from '@/lib/middleware'
 import { updateSponsorAndRecomputePaths } from '@/lib/tree'
 import { createAuditLog, getClientIp } from '@/lib/audit'
 import { writeUserLedgerEvent } from '@/lib/userLedger'
@@ -157,6 +157,62 @@ export async function PATCH(
     console.error('Admin update user error:', error)
     return NextResponse.json(
       { error: 'Failed to update user' },
+      { status: 500 }
+    )
+  }
+}
+
+/** DELETE: Admin/Director permanently delete user so they can re-register (removes from DB and related data). */
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const auth = await requireAdminOrDirector(request)
+    if (auth instanceof NextResponse) return auth
+
+    const { id } = await context.params
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: { id: true, email: true, name: true },
+    })
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+    const downlineCount = await prisma.user.count({ where: { sponsorId: id } })
+    if (downlineCount > 0) {
+      return NextResponse.json(
+        { error: 'Cannot delete: this user has downline members. Reassign their sponsor first or remove them.' },
+        { status: 400 }
+      )
+    }
+
+    const otpIdentifier = user.email.startsWith('pending_')
+      ? user.email.replace(/^pending_/, '')
+      : user.email
+
+    await prisma.$transaction(async (tx) => {
+      await tx.govIdStorage.deleteMany({ where: { userId: id } })
+      await tx.otpVerification.deleteMany({
+        where: { identifier: otpIdentifier, purpose: 'REGISTER' },
+      })
+      await tx.user.delete({ where: { id } })
+    })
+
+    await createAuditLog({
+      actorUserId: auth.userId,
+      action: 'USER_DELETED',
+      entityType: 'User',
+      entityId: id,
+      metaJson: { deletedEmail: user.email, deletedName: user.name },
+      ip: getClientIp(request),
+    }).catch(() => {})
+
+    return NextResponse.json({ ok: true, message: 'User deleted. They can register again.' })
+  } catch (error: unknown) {
+    console.error('Admin delete user error:', error)
+    return NextResponse.json(
+      { error: 'Failed to delete user' },
       { status: 500 }
     )
   }

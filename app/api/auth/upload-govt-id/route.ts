@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import path from 'node:path'
 import fs from 'fs/promises'
 import { randomUUID } from 'crypto'
+import { saveGovtIdToDb, GOVT_ID_DB_MARKER } from '@/lib/govtIdDb'
 
 const GOVT_ID_DIR = path.join(process.cwd(), 'uploads', 'govt-ids')
 const MAX_SIZE = 2 * 1024 * 1024 // 2MB
@@ -57,17 +58,36 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    await fs.mkdir(GOVT_ID_DIR, { recursive: true })
-    const fileName = `${pendingUser.id}_${randomUUID()}${ext}`
-    const filePath = path.join(GOVT_ID_DIR, fileName)
-    const relativePath = path.join('uploads', 'govt-ids', fileName).replace(/\\/g, '/')
     const buffer = Buffer.from(await file.arrayBuffer())
-    await fs.writeFile(filePath, buffer)
-    await prisma.user.update({
-      where: { id: pendingUser.id },
-      data: { idImageUrl: relativePath, idImageUploadedAt: new Date() },
-    })
-    return NextResponse.json({ success: true, idImageUrl: relativePath })
+    const fileName = `${pendingUser.id}_${randomUUID()}${ext}`
+    const contentType = mime === 'image/png' ? 'image/png' : 'image/jpeg'
+
+    try {
+      await fs.mkdir(GOVT_ID_DIR, { recursive: true })
+      const filePath = path.join(GOVT_ID_DIR, fileName)
+      const relativePath = path.join('uploads', 'govt-ids', fileName).replace(/\\/g, '/')
+      await fs.writeFile(filePath, buffer)
+      await prisma.user.update({
+        where: { id: pendingUser.id },
+        data: { idImageUrl: relativePath, idImageUploadedAt: new Date() },
+      })
+      return NextResponse.json({ success: true, idImageUrl: relativePath })
+    } catch {
+      try {
+        await saveGovtIdToDb(pendingUser.id, buffer, contentType)
+        await prisma.user.update({
+          where: { id: pendingUser.id },
+          data: { idImageUrl: GOVT_ID_DB_MARKER, idImageUploadedAt: new Date() },
+        })
+        return NextResponse.json({ success: true, idImageUrl: GOVT_ID_DB_MARKER })
+      } catch (e) {
+        console.error('Govt ID upload (DB) error:', e)
+        return NextResponse.json(
+          { error: 'Failed to upload Govt ID', code: 'UPLOAD_ERROR' },
+          { status: 500 }
+        )
+      }
+    }
   } catch (e: unknown) {
     console.error('Govt ID upload error:', e)
     return NextResponse.json(

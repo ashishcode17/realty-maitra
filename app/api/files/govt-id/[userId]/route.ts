@@ -3,12 +3,17 @@ import { requireAdminOrDirector } from '@/lib/middleware'
 import { prisma } from '@/lib/prisma'
 import path from 'node:path'
 import fs from 'fs/promises'
+import { isDbStoredGovtId, getGovtIdFromDb } from '@/lib/govtIdDb'
+import {
+  isFirebaseGovtIdPath,
+  downloadGovtIdFromFirebase,
+} from '@/lib/govtIdStorage'
 
 const UPLOADS_PATH = path.join(process.cwd(), 'uploads')
 
 /**
  * GET /api/files/govt-id/[userId]
- * Admin/Director only. Serve the user's Govt ID image.
+ * Admin/Director only. Serve the user's Govt ID image (from Firebase or local uploads).
  */
 export async function GET(
   request: NextRequest,
@@ -31,14 +36,30 @@ export async function GET(
       return NextResponse.json({ error: 'No Govt ID on file' }, { status: 404 })
     }
 
-    const fullPath = path.join(process.cwd(), user.idImageUrl)
-    if (!fullPath.startsWith(UPLOADS_PATH)) {
-      return NextResponse.json({ error: 'Invalid path' }, { status: 403 })
+    let buffer: Buffer
+    let mime: string
+    if (isDbStoredGovtId(user.idImageUrl)) {
+      const row = await getGovtIdFromDb(userId)
+      if (!row) {
+        return NextResponse.json({ error: 'No Govt ID on file' }, { status: 404 })
+      }
+      buffer = row.buffer
+      mime = row.mime
+    } else if (isFirebaseGovtIdPath(user.idImageUrl)) {
+      buffer = await downloadGovtIdFromFirebase(user.idImageUrl)
+      const ext = path.extname(user.idImageUrl).toLowerCase()
+      mime = ext === '.png' ? 'image/png' : 'image/jpeg'
+    } else {
+      const fullPath = path.join(process.cwd(), user.idImageUrl)
+      if (!fullPath.startsWith(UPLOADS_PATH)) {
+        return NextResponse.json({ error: 'Invalid path' }, { status: 403 })
+      }
+      buffer = await fs.readFile(fullPath)
+      const ext = path.extname(user.idImageUrl).toLowerCase()
+      mime = ext === '.png' ? 'image/png' : 'image/jpeg'
     }
 
-    const buffer = await fs.readFile(fullPath)
-    const ext = path.extname(user.idImageUrl).toLowerCase()
-    const mime = ext === '.png' ? 'image/png' : 'image/jpeg'
+    const ext = mime === 'image/png' ? '.png' : '.jpg'
 
     return new NextResponse(buffer, {
       headers: {

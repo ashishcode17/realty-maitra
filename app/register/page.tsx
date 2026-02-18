@@ -83,7 +83,7 @@ export default function RegisterPage() {
   const [successUser, setSuccessUser] = useState<{ name: string; rank: string; sponsorCode: string; sponsorName?: string; govtIdUploaded?: boolean } | null>(null);
   const [govtIdFile, setGovtIdFile] = useState<File | null>(null);
   // Persistent error so you can read and copy the actual message (toast disappears too fast)
-  const [lastError, setLastError] = useState<{ message: string; code?: string; raw?: string } | null>(null);
+  const [lastError, setLastError] = useState<{ message: string; code?: string; detail?: string; raw?: string } | null>(null);
 
   useEffect(() => {
     fetch('/api/bootstrap-status')
@@ -188,13 +188,14 @@ export default function RegisterPage() {
         setLastError({
           message: data.message || data.error || displayMsg,
           code: data.code,
+          detail: (data as { detail?: string }).detail,
           raw: JSON.stringify(data, null, 2),
         });
         toast.error(displayMsg);
         return;
       }
       setLastError(null);
-      setMockOTP(data.mockOTP ?? '');
+      setMockOTP((data as { mockOTP?: string }).mockOTP ?? '');
       toast.success(data.message || 'OTP sent');
       if (data.smsFailed) toast.info('Check your email for the code.');
       if (rootStep === 'root-form') setRootStep('otp');
@@ -231,6 +232,7 @@ export default function RegisterPage() {
         setLastError({
           message: data.message || data.error || displayMsg,
           code: data.code,
+          detail: (data as { detail?: string }).detail,
           raw: JSON.stringify(data, null, 2),
         });
         toast.error(displayMsg);
@@ -291,6 +293,9 @@ export default function RegisterPage() {
             </CardHeader>
             <CardContent className="space-y-2">
               <p className="text-red-200 text-sm break-words">{lastError.message}</p>
+              {lastError.detail && (
+                <p className="text-amber-200 text-sm break-words font-mono">Actual error: {lastError.detail}</p>
+              )}
               {lastError.code && <p className="text-red-400/80 text-xs">Code: {lastError.code}</p>}
               {lastError.raw && (
                 <pre className="text-xs bg-black/30 p-3 rounded overflow-auto max-h-32 text-slate-300 break-all whitespace-pre-wrap">{lastError.raw}</pre>

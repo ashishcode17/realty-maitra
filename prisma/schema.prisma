@@ -227,6 +227,14 @@ model PayoutLedger {
   @@index([bookingId])
 }
 
+// Govt ID image stored in DB (for live/serverless when filesystem is read-only). Free, no external service.
+model GovIdStorage {
+  userId   String   @id // User id (pending or final)
+  content  Bytes    // Image bytes (JPG/PNG, max 2MB)
+  mime     String   // image/jpeg or image/png
+  createdAt DateTime @default(now())
+}
+
 // Append-only join/exit ledger for Admin/Director. Immutable events.
 model UserLedger {
   id              String   @id @default(cuid())

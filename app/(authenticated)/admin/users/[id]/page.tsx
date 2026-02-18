@@ -4,7 +4,18 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, Save, User, Search } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
+import { ChevronLeft, Save, User, Search, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 
@@ -40,6 +51,7 @@ export default function AdminUserDetailPage() {
   const [sponsorSearch, setSponsorSearch] = useState('')
   const [sponsorOptions, setSponsorOptions] = useState<{ id: string; name: string; email: string }[]>([])
   const [sponsorSearchOpen, setSponsorSearchOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -79,6 +91,26 @@ export default function AdminUserDetailPage() {
     }, 300)
     return () => clearTimeout(t)
   }, [sponsorSearch, id])
+
+  const handleDelete = async () => {
+    if (!user) return
+    setDeleting(true)
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`/api/admin/users/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Delete failed')
+      toast.success('User deleted. They can register again with the same email/phone.')
+      router.push('/admin/users')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to delete')
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   const handleSave = async () => {
     if (!user) return
@@ -225,13 +257,49 @@ export default function AdminUserDetailPage() {
             </select>
           </div>
 
-          <Button
-            onClick={handleSave}
-            disabled={saving}
-            className="bg-emerald-600 hover:bg-emerald-500 text-white"
-          >
-            <Save className="h-4 w-4 mr-2" /> {saving ? 'Saving…' : 'Save changes'}
-          </Button>
+          <div className="flex flex-wrap items-center gap-4">
+            <Button
+              onClick={handleSave}
+              disabled={saving}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white"
+            >
+              <Save className="h-4 w-4 mr-2" /> {saving ? 'Saving…' : 'Save changes'}
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="border-red-500/60 text-red-400 hover:bg-red-950/50 hover:text-red-300"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" /> Delete user
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete this user?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete the user and their related data (Govt ID, OTP, etc.).
+                    They will be able to register again with the same email and phone.
+                    This cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={(e) => {
+                      e.preventDefault()
+                      handleDelete()
+                    }}
+                    disabled={deleting}
+                    className="bg-red-600 hover:bg-red-500"
+                  >
+                    {deleting ? 'Deleting…' : 'Delete'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </CardContent>
       </Card>
     </div>

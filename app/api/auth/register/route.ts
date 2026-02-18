@@ -19,6 +19,10 @@ import { nanoid } from 'nanoid'
 import path from 'node:path'
 import fs from 'fs/promises'
 import { randomUUID } from 'crypto'
+import {
+  saveGovtIdToDb,
+  GOVT_ID_DB_MARKER,
+} from '@/lib/govtIdDb'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MIN_PASSWORD_LENGTH = 8
@@ -213,25 +217,53 @@ export async function POST(request: NextRequest) {
     })
 
     if (govtIdFile) {
+      const buffer = Buffer.from(await govtIdFile.arrayBuffer())
+      const contentType =
+        govtIdFile.type === 'image/png' ? 'image/png' : 'image/jpeg'
+      const ext = contentType === 'image/png' ? '.png' : '.jpg'
+      const fileName = `${pendingUser.id}_${randomUUID()}${ext}`
+
+      let saved = false
       try {
-        const ext = govtIdFile.type === 'image/png' ? '.png' : '.jpg'
-        const fileName = `${pendingUser.id}_${randomUUID()}${ext}`
         const filePath = path.join(`${GOVT_ID_DIR}/${fileName}`)
         const relativePath = (`uploads/govt-ids/${fileName}`).replace(/\\/g, '/')
         await fs.mkdir(GOVT_ID_DIR, { recursive: true })
-        const buffer = Buffer.from(await govtIdFile.arrayBuffer())
         await fs.writeFile(filePath, buffer)
         await prisma.user.update({
           where: { id: pendingUser.id },
           data: { idImageUrl: relativePath, idImageUploadedAt: new Date() },
         })
-      } catch (fileErr: unknown) {
-        const msg = fileErr instanceof Error ? fileErr.message : String(fileErr)
-        console.error('Register: Govt ID save failed', msg)
+        saved = true
+      } catch {
+        // Live/serverless: filesystem often read-only. Store in DB (free, no extra service).
+        try {
+          await saveGovtIdToDb(pendingUser.id, buffer, contentType)
+          await prisma.user.update({
+            where: { id: pendingUser.id },
+            data: { idImageUrl: GOVT_ID_DB_MARKER, idImageUploadedAt: new Date() },
+          })
+          saved = true
+        } catch (dbErr: unknown) {
+          const msg = dbErr instanceof Error ? dbErr.message : String(dbErr)
+          console.error('Register: Govt ID save (DB) failed', msg)
+          await prisma.user.delete({ where: { id: pendingUser.id } }).catch(() => {})
+          return NextResponse.json(
+            {
+              error: 'Failed to save Govt ID',
+              message: isDev ? msg : 'Failed to save Govt ID image. Please try again.',
+              code: 'GOVT_ID_SAVE_FAILED',
+              detail: msg,
+            },
+            { status: 500, headers: { 'Content-Type': 'application/json' } }
+          )
+        }
+      }
+      if (!saved) {
+        await prisma.user.delete({ where: { id: pendingUser.id } }).catch(() => {})
         return NextResponse.json(
           {
             error: 'Failed to save Govt ID',
-            message: isDev ? msg : 'Failed to save Govt ID image. Please try again.',
+            message: 'Failed to save Govt ID image. Please try again.',
             code: 'GOVT_ID_SAVE_FAILED',
           },
           { status: 500, headers: { 'Content-Type': 'application/json' } }

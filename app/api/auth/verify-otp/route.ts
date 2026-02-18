@@ -8,6 +8,7 @@ import { sendWelcomeEmail } from '@/lib/email'
 import { createAuditLog, getClientIp } from '@/lib/audit'
 import { markInviteUsedAndRegenerate, ensureActiveInviteForUser } from '@/lib/invite'
 import { writeUserLedgerEvent } from '@/lib/userLedger'
+import { copyGovtIdInDb, isDbStoredGovtId } from '@/lib/govtIdDb'
 
 export async function POST(request: NextRequest) {
   try {
@@ -145,6 +146,12 @@ export async function POST(request: NextRequest) {
       }
     }
     if (!newUser!) throw new Error('User creation failed')
+
+    if (isDbStoredGovtId(pendingUser.idImageUrl)) {
+      await copyGovtIdInDb(pendingUserId, newUser.id).catch((e) =>
+        console.error('Verify OTP: copy GovId in DB', e)
+      )
+    }
 
     let treeIdUpdate: string | null = null
     if (isRootAdmin || isDirectorSeed) {
