@@ -196,6 +196,16 @@ export async function DELETE(
       await tx.otpVerification.deleteMany({
         where: { identifier: otpIdentifier, purpose: 'REGISTER' },
       })
+      // Tables that reference User without onDelete Cascade – delete or nullify first
+      await tx.payoutLedger.deleteMany({ where: { userId: id } })
+      await tx.earnings.deleteMany({ where: { userId: id } })
+      await tx.trainingBooking.deleteMany({ where: { userId: id } })
+      await tx.challengeEnrollment.deleteMany({ where: { userId: id } })
+      await tx.auditLog.deleteMany({ where: { actorUserId: id } })
+      await tx.notification.updateMany({ where: { targetUserId: id }, data: { targetUserId: null } })
+      await tx.notification.updateMany({ where: { createdById: id }, data: { createdById: null } })
+      await tx.lead.updateMany({ where: { assignedToUserId: id }, data: { assignedToUserId: null } })
+      await tx.project.updateMany({ where: { createdById: id }, data: { createdById: null } })
       await tx.user.delete({ where: { id } })
     })
 
