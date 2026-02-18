@@ -233,6 +233,8 @@ model GovIdStorage {
   content  Bytes    // Image bytes (JPG/PNG, max 2MB)
   mime     String   // image/jpeg or image/png
   createdAt DateTime @default(now())
+
+  @@map("govt_id_storage")
 }
 
 // Append-only join/exit ledger for Admin/Director. Immutable events.
