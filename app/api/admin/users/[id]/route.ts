@@ -196,7 +196,6 @@ export async function DELETE(
       await tx.otpVerification.deleteMany({
         where: { identifier: otpIdentifier, purpose: 'REGISTER' },
       })
-      // Tables that reference User without onDelete Cascade – delete or nullify first
       await tx.payoutLedger.deleteMany({ where: { userId: id } })
       await tx.earnings.deleteMany({ where: { userId: id } })
       await tx.trainingBooking.deleteMany({ where: { userId: id } })
@@ -206,6 +205,31 @@ export async function DELETE(
       await tx.notification.updateMany({ where: { createdById: id }, data: { createdById: null } })
       await tx.lead.updateMany({ where: { assignedToUserId: id }, data: { assignedToUserId: null } })
       await tx.project.updateMany({ where: { createdById: id }, data: { createdById: null } })
+      await tx.trainingContent.updateMany({ where: { createdById: id }, data: { createdById: null } })
+
+      // Sessions created by this user: remove bookings + slots then delete sessions
+      const sessions = await tx.trainingSession.findMany({
+        where: { createdById: id },
+        select: { id: true },
+      })
+      const sessionIds = sessions.map((s) => s.id)
+      if (sessionIds.length > 0) {
+        await tx.trainingBooking.deleteMany({ where: { sessionId: { in: sessionIds } } })
+        await tx.trainingSlot.deleteMany({ where: { sessionId: { in: sessionIds } } })
+        await tx.trainingSession.deleteMany({ where: { createdById: id } })
+      }
+
+      // Challenges created by this user: remove enrollments then delete challenges
+      const challenges = await tx.offerChallenge.findMany({
+        where: { createdById: id },
+        select: { id: true },
+      })
+      const challengeIds = challenges.map((c) => c.id)
+      if (challengeIds.length > 0) {
+        await tx.challengeEnrollment.deleteMany({ where: { challengeId: { in: challengeIds } } })
+        await tx.offerChallenge.deleteMany({ where: { createdById: id } })
+      }
+
       await tx.user.delete({ where: { id } })
     })
 
@@ -220,9 +244,10 @@ export async function DELETE(
 
     return NextResponse.json({ ok: true, message: 'User deleted. They can register again.' })
   } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error)
     console.error('Admin delete user error:', error)
     return NextResponse.json(
-      { error: 'Failed to delete user' },
+      { error: 'Failed to delete user', detail: message },
       { status: 500 }
     )
   }

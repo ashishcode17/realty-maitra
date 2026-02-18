@@ -102,7 +102,7 @@ export default function AdminUserDetailPage() {
         headers: { Authorization: `Bearer ${token}` },
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Delete failed')
+      if (!res.ok) throw new Error(data.detail || data.error || 'Delete failed')
       toast.success('User deleted. They can register again with the same email/phone.')
       router.push('/admin/users')
     } catch (e) {
