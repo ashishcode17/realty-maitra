@@ -60,8 +60,9 @@ export async function GET(
     }
 
     const ext = mime === 'image/png' ? '.png' : '.jpg'
+    const body = new Uint8Array(buffer)
 
-    return new NextResponse(buffer, {
+    return new NextResponse(body, {
       headers: {
         'Content-Type': mime,
         'Cache-Control': 'private, no-store',
